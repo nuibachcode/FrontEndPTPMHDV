@@ -1,0 +1,9 @@
+/* custom.css */
+:root {
+  --bs-primary: #2563eb;
+  --bs-border-radius: 0.5rem;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+}
