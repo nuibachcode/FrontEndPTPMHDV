@@ -1,3 +1,4 @@
+@import "react-datepicker/dist/react-datepicker.css";
 /* custom.css */
 :root {
   --bs-primary: #2563eb;
@@ -7,3 +8,95 @@
 body {
   font-family: "Inter", sans-serif;
 }
+/* src/App.css */
+
+/* Reset và font cơ bản */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f4f7f6;
+  color: #333;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header */
+header {
+  background-color: #007bff;
+  color: white;
+  padding: 15px 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+nav a {
+  color: white;
+  text-decoration: none;
+  margin-left: 20px;
+}
+
+/* Hero Section */
+.hero-section {
+  background: #e6f2ff;
+  padding: 60px 20px;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.btn-primary {
+  background-color: #28a745;
+  color: white;
+  padding: 10px 20px;
+  text-decoration: none;
+  border-radius: 5px;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+/* Form Styling (BookingForm) */
+form {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: 20px auto;
+}
+
+label {
+  display: block;
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box; /* Quan trọng để padding không làm tăng chiều rộng */
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 20px;
+  background-color: #333;
+  color: white;
+  margin-top: 40px;
+}
+
+/* Import CSS của React Datepicker */
+/* Đây là bước quan trọng để DatePicker hiển thị đúng */
