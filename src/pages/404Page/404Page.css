@@ -1,0 +1,29 @@
+/* Màu nền chung cho trang */
+.not-found-container {
+  background-color: #5dadec; /* Màu xanh da trời nhạt giống hình */
+}
+
+/* Style cho số 404 */
+.text-404 {
+  font-size: 12rem; /* Kích thước font cực lớn */
+  font-weight: 700;
+  line-height: 1;
+  color: transparent; /* Làm cho màu chữ trong suốt */
+
+  /* Đây là mấu chốt: tạo viền trắng cho chữ */
+  -webkit-text-stroke: 3px white;
+  text-stroke: 3px white;
+}
+
+/* Điều chỉnh kích thước font cho màn hình nhỏ (responsive) */
+@media (max-width: 768px) {
+  .text-404 {
+    font-size: 8rem; /* Giảm kích thước font trên mobile */
+    -webkit-text-stroke: 2px white;
+    text-stroke: 2px white;
+  }
+
+  .text-white {
+    font-size: 1.5rem; /* Giảm kích thước text phụ */
+  }
+}
