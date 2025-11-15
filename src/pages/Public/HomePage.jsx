@@ -1,16 +1,19 @@
 // src/pages/HomePage.jsx
 
-import HeroSection from "../../components/Common/HeroSection";
-import ServiceList from "../../components/Common/ServiceList";
-
+import Team from "../../components/Common/Homes/Team";
+import Hero from "../../components/Common/Homes/Hero";
+import About from "../../components/Common/Homes/About";
+import Service from "../../components/Common/Homes/service";
 const HomePage = () => {
   return (
     <>
-      <HeroSection
+      <Hero
         title="Chào mừng đến với Nha Khoa ABC"
         subtitle="Nơi mang đến nụ cười hoàn hảo cho bạn và gia đình."
       />
-      <ServiceList />
+      <About />
+      <Service />
+      <Team />
     </>
   );
 };
