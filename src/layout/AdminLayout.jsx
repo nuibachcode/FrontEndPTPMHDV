@@ -1,4 +1,3 @@
-
 import { Link, useNavigate } from "react-router-dom";
 
 // Giả lập import logo nếu bạn chưa có file ảnh thật
@@ -144,5 +143,5 @@ const AdminLayout = ({ children }) => {
     </>
   );
 };
->>>>>>> origin/phongdev
+
 export default AdminLayout;
