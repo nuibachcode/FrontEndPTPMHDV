@@ -1,5 +1,5 @@
 import React from "react";
-import about1 from "../../assets/images/anh_about1.jpg";
+import about1 from "../../assets/images/vechungtoi.png";
 import about2 from "../../assets/images/anh_about2.jpg";
 import about3 from "../../assets/images/anh_about3.jpg";
 
@@ -20,7 +20,7 @@ export default function AboutUs() {
         >
           <div
             style={{
-              backgroundColor: "rgba(0,0,0,0.5)",
+              backgroundColor: "rgba(0,0,0,0.15)",
               position: "absolute",
               top: 0,
               left: 0,

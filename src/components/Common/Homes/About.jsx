@@ -1,5 +1,5 @@
 import React from "react";
-import about1 from "../../../assets/images/anh_about1.jpg";
+import about1 from "../../../assets/images/vechungtoi.png";
 import about2 from "../../../assets/images/anh_about2.jpg";
 import about3 from "../../../assets/images/anh_about3.jpg";
 
@@ -11,12 +11,12 @@ export default function AboutUs() {
         className="d-flex align-items-center justify-content-center text-white text-center"
         style={{
           backgroundImage: `linear-gradient(
-              rgba(0, 0, 0, 0.45),
+              rgba(0, 0, 0, 0.05),
               rgba(0, 0, 0, 0.55)
             ), url(${about1})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          height: "480px",
+          height: "580px",
         }}
       >
         <div className="container">

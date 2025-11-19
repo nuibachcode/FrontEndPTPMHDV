@@ -45,7 +45,7 @@ const Doctor = () => {
                 <div className="card-body">
                   <h5 className="card-title">{doctor.name}</h5>
                   <p className="card-text text-muted">{doctor.specialty}</p>
-                  <a href="/dat-lich" className="btn btn-outline-primary">
+                  <a href="/booking" className="btn btn-outline-primary">
                     Đặt lịch với {doctor.name.split(" ")[1]}
                   </a>
                 </div>

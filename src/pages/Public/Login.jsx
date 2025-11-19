@@ -16,7 +16,7 @@ const LoginPage = () => {
           <input
             type="text"
             className="form-control border-0"
-            placeholder="Email"
+            placeholder="Nhập email hoặc tài khoản"
           />
         </div>
 
@@ -28,7 +28,7 @@ const LoginPage = () => {
           <input
             type="password"
             className="form-control border-0"
-            placeholder="Password"
+            placeholder="Mật khẩu"
           />
         </div>
 
