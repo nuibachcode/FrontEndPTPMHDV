@@ -1,29 +1,35 @@
 import React, { useState, useEffect } from "react";
 import logo from "../../assets/images/logo4.png";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { NavDropdown } from "react-bootstrap";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
 
-// Màu sắc chủ đạo từ code của bạn
+// Màu sắc chủ đạo
 const PRIMARY_COLOR = "#09b7ceff";
 const HOVER_COLOR = "#15b7c9ff";
-const ACTIVE_COLOR = "#512f9fc3"; // Màu Xanh Tím cho Active/Hover
-const BOOKING_BUTTON_COLOR = "#6964c89a"; // Màu Xanh Tím cho nút Đặt lịch
+const ACTIVE_COLOR = "#512f9fc3";
+const BOOKING_BUTTON_COLOR = "#6964c89a";
 
 // Hàm giả định để kiểm tra trạng thái đăng nhập
 const useAuth = () => {
-  // Giả định user object có các trường: roleName, fullName, email, và id
-  const user = JSON.parse(localStorage.getItem("user"));
+  const userString = localStorage.getItem("user");
+  let user = null;
+  if (userString) {
+    try {
+      user = JSON.parse(userString);
+    } catch (e) {
+      user = null;
+    }
+  }
   return { isAuthenticated: !!user, user };
 };
 
 export default function Header() {
   const location = useLocation();
-  const navigate = useNavigate(); // Sử dụng useNavigate để chuyển hướng
+  const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
 
-  // Hiệu ứng thay đổi header khi cuộn trang
+  // Hiệu ứng cuộn trang
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -32,27 +38,26 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Hàm xử lý Đăng xuất
+  // Hàm xử lý Đăng xuất (Xóa sạch storage)
   const handleLogout = () => {
-    // Thường thì nên dùng Context/Redux để quản lý Auth, nhưng ở đây dùng localStorage trực tiếp
     const confirmLogout = window.confirm("Bạn có chắc chắn muốn đăng xuất?");
     if (confirmLogout) {
       localStorage.removeItem("user");
-      navigate("/"); // Chuyển hướng về trang chủ
-      window.location.reload(); // Reload để cập nhật Header
+      localStorage.removeItem("token"); // Nhớ xóa token
+      navigate("/");
+      window.location.reload();
     }
   };
 
-  // Component nhỏ cho một mục NavLink tùy chỉnh (Đã thêm useState cho Hover)
+  // Component NavItemLink
   const NavItemLink = ({ to, children }) => {
     const isActive = location.pathname === to;
     const [isHovered, setIsHovered] = useState(false);
 
     const linkStyle = {
       fontWeight: isActive ? "bold" : "normal",
-      color: isActive || isHovered ? ACTIVE_COLOR : "white", // Chữ đổi màu khi Active/Hover
+      color: isActive || isHovered ? ACTIVE_COLOR : "white",
       transition: "color 0.2s, border-bottom 0.2s",
-      // Gạch chân màu ACTIVE_COLOR cho link đang active hoặc khi hover
       borderBottom:
         isActive || isHovered
           ? `3px solid ${ACTIVE_COLOR}`
@@ -120,7 +125,6 @@ export default function Header() {
         {/* Menu */}
         <div className="collapse navbar-collapse" id="navbarNav">
           <ul className="navbar-nav ms-auto align-items-center">
-            {/* Các mục menu chi tiết */}
             <NavItemLink to="/">Trang chủ</NavItemLink>
             <NavItemLink to="/about">Về chúng tôi</NavItemLink>
             <NavItemLink to="/doctors">Bác sĩ</NavItemLink>
@@ -128,7 +132,7 @@ export default function Header() {
             <NavItemLink to="/prices">Bảng giá</NavItemLink>
             <NavItemLink to="/feedback">Đánh giá</NavItemLink>
 
-            {/* Nút Đặt lịch hẹn - Luôn nổi bật */}
+            {/* Nút Đặt lịch hẹn */}
             <li className="nav-item ms-3">
               <Link
                 to="/booking"
@@ -142,46 +146,69 @@ export default function Header() {
               </Link>
             </li>
 
-            {/* LOGIC ĐĂNG NHẬP / HỒ SƠ CÁ NHÂN */}
+            {/* --- LOGIC HIỂN THỊ USER --- */}
             {!isAuthenticated ? (
+              // 1. CHƯA ĐĂNG NHẬP
               <li className="nav-item ms-2">
                 <Link to="/account/login" className="btn btn-outline-light">
                   Đăng nhập
                 </Link>
               </li>
             ) : (
-              <li className="nav-item ms-2">
-                <NavDropdown
-                  // Hiển thị Tên đầy đủ hoặc Email
-                  title={
-                    <span className="fw-bold  " style={{ color: "#ffffffff" }}>
-                      <i className="bi bi-person-circle me-1"></i>
-                      {user?.fullName || user?.email || "Tài khoản"}
+              // 2. ĐÃ ĐĂNG NHẬP
+              <li className="nav-item ms-2 d-flex align-items-center gap-2">
+                {/* CHECK ROLE: Nếu là Admin (1) hoặc Bác sĩ (2) -> Hiện nút QUẢN LÝ */}
+                {user.roleId === 1 || user.roleId === 2 ? (
+                  <>
+                    <span className="fw-bold text-white me-2 border-end pe-3">
+                      {user.roleId === 1 ? "Sếp" : "BS"} {user.fullName}
                     </span>
-                  }
-                  id="userDropdown"
-                  align="end"
-                  menuVariant="dark" // Menu màu tối
-                  // CSS cho nút toggle, dùng màu ACTIVE_COLOR làm màu nổi bật
-
-                  toggleClassName="text-white border border-light px-2 rounded"
-                >
-                  <NavDropdown.Item as={Link} to="/patient/profile">
-                    <i className="bi bi-person-badge me-2"></i> Thông tin cá
-                    nhân
-                  </NavDropdown.Item>
-                  <NavDropdown.Item as={Link} to="/patient/history">
-                    <i className="bi bi-calendar-check me-2"></i> Lịch sử Đặt
-                    lịch
-                  </NavDropdown.Item>
-                  <NavDropdown.Divider />
-                  <NavDropdown.Item
-                    onClick={handleLogout}
-                    className="text-danger" // Màu đỏ cho nút Đăng xuất
+                    <button
+                      className="btn btn-warning btn-sm fw-bold"
+                      onClick={() =>
+                        navigate(user.roleId === 1 ? "/admin" : "/doctor")
+                      }
+                    >
+                      <i className="bi bi-gear-fill me-1"></i> Quản lý
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm fw-bold"
+                      onClick={handleLogout}
+                    >
+                      Thoát
+                    </button>
+                  </>
+                ) : (
+                  // NẾU LÀ BỆNH NHÂN (3) -> Hiện Dropdown Menu như cũ
+                  <NavDropdown
+                    title={
+                      <span className="fw-bold" style={{ color: "#ffffffff" }}>
+                        <i className="bi bi-person-circle me-1"></i>
+                        {user?.fullName || user?.email || "Tài khoản"}
+                      </span>
+                    }
+                    id="userDropdown"
+                    align="end"
+                    menuVariant="dark"
+                    className="text-white border border-light px-2 rounded"
                   >
-                    <i className="bi bi-box-arrow-right me-2"></i> Đăng xuất
-                  </NavDropdown.Item>
-                </NavDropdown>
+                    <NavDropdown.Item as={Link} to="/patient/profile">
+                      <i className="bi bi-person-badge me-2"></i> Thông tin cá
+                      nhân
+                    </NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to="/patient/history">
+                      <i className="bi bi-calendar-check me-2"></i> Lịch sử Đặt
+                      lịch
+                    </NavDropdown.Item>
+                    <NavDropdown.Divider />
+                    <NavDropdown.Item
+                      onClick={handleLogout}
+                      className="text-danger"
+                    >
+                      <i className="bi bi-box-arrow-right me-2"></i> Đăng xuất
+                    </NavDropdown.Item>
+                  </NavDropdown>
+                )}
               </li>
             )}
           </ul>

@@ -11,7 +11,7 @@ export const DoctorRoutes = [
     element: DoctorDashboard,
     layout: DoctorLayout,
     isPrivate: true,
-    roles: ["doctor", "admin"], // Bác sĩ và Admin có thể xem
+    roles: [1, 2],
   },
 
   {
@@ -19,20 +19,20 @@ export const DoctorRoutes = [
     element: ScheduleManagement,
     layout: DoctorLayout,
     isPrivate: true,
-    roles: ["doctor"], // Chỉ Bác sĩ mới được quản lý lịch
+    roles: [2],
   },
   {
     path: "/doctor/profile",
     element: Profile,
     layout: DoctorLayout,
     isPrivate: true,
-    roles: ["doctor"], // Chỉ Bác sĩ mới được quản lý lịch
+    roles: [2],
   },
   {
     path: "/doctor/patient-records",
     element: PatientRecordsPage,
     layout: DoctorLayout,
     isPrivate: true,
-    roles: ["doctor"], // Chỉ Bác sĩ mới được quản lý lịch
+    roles: [2],
   },
 ];

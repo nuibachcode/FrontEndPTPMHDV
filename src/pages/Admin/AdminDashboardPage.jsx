@@ -1,59 +1,77 @@
-// src/pages/Admin/AdminDashboardPage.jsx (Đổi tên file cho phù hợp)
-import React from "react";
-import { Card, Row, Col, Badge, Table, Button } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
+import { Card, Row, Col, Badge, Table, Button, Spinner } from "react-bootstrap";
 import { Link } from "react-router-dom";
-
-// Dữ liệu giả định (Giữ nguyên logic và dữ liệu)
-const mockData = {
-  todayRevenue: 15000000,
-  todayOrders: 25,
-  monthRevenue: 350000000,
-  monthOrders: 580,
-  monthTarget: 500000000,
-  recentOrders: [
-    {
-      id: 1001,
-      patient: "Nguyễn B",
-      total: 500000,
-      date: "18/11/2025",
-      status: "Hoàn thành",
-    },
-    {
-      id: 1002,
-      patient: "Trần C",
-      total: 1500000,
-      date: "18/11/2025",
-      status: "Hoàn thành",
-    },
-    {
-      id: 1003,
-      patient: "Lê D",
-      total: 300000,
-      date: "17/11/2025",
-      status: "Chờ thanh toán",
-    },
-  ],
-};
-
-// Hàm định dạng tiền tệ
-const formatCurrency = (amount) => {
-  return amount.toLocaleString("vi-VN") + " VNĐ";
-};
+import axios from "axios";
+import moment from "moment";
 
 const AdminDashboardPage = () => {
-  const progressPercent = (mockData.monthRevenue / mockData.monthTarget) * 100;
+  // State lưu dữ liệu thật
+  const [stats, setStats] = useState({
+    todayRevenue: 0,
+    todayOrders: 0, // Nếu API có trả về (hoặc bạn tự tính)
+    monthRevenue: 0,
+    monthOrders: 0,
+    monthTarget: 500000000, // Target cứng
+    countDoctors: 0,
+  });
+  const [recentPayments, setRecentPayments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      // Gọi song song 2 API
+      const [resStats, resRecent] = await Promise.all([
+        axios.get("http://localhost:8081/api/admin/stats", config),
+        axios.get("http://localhost:8081/api/admin/payments/recent", config),
+      ]);
+
+      if (resStats.data.EC === 0) {
+        const data = resStats.data.DT;
+        setStats((prev) => ({
+          ...prev,
+          todayRevenue: Number(data.revenueToday),
+          monthRevenue: Number(data.revenueMonth),
+          monthOrders: Number(data.totalOrders),
+          countDoctors: Number(data.totalDoctors),
+        }));
+      }
+
+      if (resRecent.data.EC === 0) {
+        setRecentPayments(resRecent.data.DT);
+      }
+    } catch (error) {
+      console.log("Lỗi lấy dashboard:", error);
+    }
+    setIsLoading(false);
+  };
+
+  const formatCurrency = (amount) => {
+    return Number(amount).toLocaleString("vi-VN") + " VNĐ";
+  };
+
+  const progressPercent = (stats.monthRevenue / stats.monthTarget) * 100;
+
+  if (isLoading)
+    return (
+      <div className="text-center mt-5">
+        <Spinner animation="border" />
+      </div>
+    );
 
   return (
     <div className="admin-dashboard">
-      {/* Đổi nhãn từ Manager sang Admin */}
       <h3 className="mb-4 text-warning fw-bold">
         📊 Tổng quan Hiệu suất Kinh doanh
       </h3>
-      <p className="text-secondary mb-4">
-        Theo dõi các chỉ số tài chính và vận hành quan trọng của phòng khám.
-      </p>
 
-      {/* --- 1. Thẻ KPI Tổng hợp --- */}
+      {/* --- 1. Thẻ KPI --- */}
       <Row className="mb-4">
         {/* Doanh thu Hôm nay */}
         <Col md={3}>
@@ -63,11 +81,8 @@ const AdminDashboardPage = () => {
                 Doanh thu Hôm nay
               </Card.Title>
               <Card.Text className="fs-3 fw-bolder">
-                {formatCurrency(mockData.todayRevenue)}
+                {formatCurrency(stats.todayRevenue)}
               </Card.Text>
-              <span className="small text-muted">
-                +{mockData.todayOrders} đơn hàng
-              </span>
             </Card.Body>
           </Card>
         </Col>
@@ -80,27 +95,22 @@ const AdminDashboardPage = () => {
                 Doanh thu Tháng này
               </Card.Title>
               <Card.Text className="fs-3 fw-bolder">
-                {formatCurrency(mockData.monthRevenue)}
+                {formatCurrency(stats.monthRevenue)}
               </Card.Text>
               <div className="progress mt-2" style={{ height: "8px" }}>
                 <div
                   className="progress-bar bg-warning"
-                  role="progressbar"
                   style={{ width: `${Math.min(progressPercent, 100)}%` }}
-                  aria-valuenow={progressPercent}
-                  aria-valuemin="0"
-                  aria-valuemax="100"
                 ></div>
               </div>
               <span className="small text-muted">
-                Đạt {progressPercent.toFixed(1)}% mục tiêu (
-                {formatCurrency(mockData.monthTarget)})
+                Đạt {progressPercent.toFixed(1)}% mục tiêu
               </span>
             </Card.Body>
           </Card>
         </Col>
 
-        {/* Tổng số Đơn hàng trong Tháng */}
+        {/* Tổng đơn */}
         <Col md={3}>
           <Card className="shadow-sm border-start border-success border-5 h-100">
             <Card.Body>
@@ -108,20 +118,20 @@ const AdminDashboardPage = () => {
                 Tổng đơn Tháng
               </Card.Title>
               <Card.Text className="fs-3 fw-bolder">
-                {mockData.monthOrders} đơn
+                {stats.monthOrders} đơn
               </Card.Text>
-              <span className="small text-muted">Chỉ số vận hành cốt lõi</span>
             </Card.Body>
           </Card>
         </Col>
 
-        {/* Thẻ Quản lý Bác sĩ (vẫn dùng link admin) */}
+        {/* Bác sĩ */}
         <Col md={2}>
           <Card className="shadow-sm border-start border-info border-5 h-100">
             <Card.Body>
               <Card.Title className="text-info fw-bold">Bác sĩ</Card.Title>
-              <Card.Text className="fs-4 fw-bolder">5 Đang hoạt động</Card.Text>
-              {/* Đổi link về /admin/doctors */}
+              <Card.Text className="fs-4 fw-bolder">
+                {stats.countDoctors} Đang hoạt động
+              </Card.Text>
               <Button size="sm" variant="info" as={Link} to="/admin/doctors">
                 Quản lý ngay
               </Button>
@@ -130,51 +140,54 @@ const AdminDashboardPage = () => {
         </Col>
       </Row>
 
-      {/* --- 2. Bảng Đơn hàng Gần đây --- */}
+      {/* --- 2. Bảng Giao dịch Gần đây --- */}
       <Card className="shadow-sm">
-        <Card.Header className="bg-white fw-bold d-flex justify-content-between align-items-center">
+        <Card.Header className="bg-white fw-bold">
           Giao dịch Gần đây
-          {/* Đổi link về /admin/appointments */}
-          <Button
-            variant="outline-primary"
-            size="sm"
-            as={Link}
-            to="/admin/appointments"
-          >
-            <i className="bi bi-arrow-right"></i> Xem tất cả
-          </Button>
         </Card.Header>
         <Card.Body>
           <Table hover responsive>
             <thead>
               <tr>
-                <th>Mã Đơn</th>
+                <th>Mã GD</th>
                 <th>Bệnh nhân</th>
                 <th>Ngày</th>
-                <th className="text-end">Tổng tiền</th>
+                <th className="text-end">Số tiền</th>
+                <th className="text-center">Hình thức</th>
                 <th className="text-center">Trạng thái</th>
               </tr>
             </thead>
             <tbody>
-              {mockData.recentOrders.map((order) => (
-                <tr key={order.id}>
-                  <td>#{order.id}</td>
-                  <td>{order.patient}</td>
-                  <td>{order.date}</td>
-                  <td className="text-end fw-semibold text-danger">
-                    {formatCurrency(order.total)}
+              {recentPayments.map((item) => (
+                <tr key={item.id}>
+                  <td>#{item.id}</td>
+                  <td>{item.Booking?.User?.fullName || "Khách vãng lai"}</td>
+                  <td>{moment(item.createdAt).format("DD/MM/YYYY HH:mm")}</td>
+                  <td className="text-end fw-bold text-danger">
+                    {formatCurrency(item.amount)}
+                  </td>
+                  <td className="text-center">
+                    <Badge bg={item.method === "cash" ? "success" : "primary"}>
+                      {item.method === "cash" ? "Tiền mặt" : "Chuyển khoản"}
+                    </Badge>
                   </td>
                   <td className="text-center">
                     <Badge
-                      bg={
-                        order.status === "Hoàn thành" ? "success" : "secondary"
-                      }
+                      bg={item.status === "success" ? "success" : "warning"}
+                      text={item.status === "success" ? "white" : "dark"}
                     >
-                      {order.status}
+                      {item.status === "success" ? "Thành công" : "Chờ xử lý"}
                     </Badge>
                   </td>
                 </tr>
               ))}
+              {recentPayments.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="text-center">
+                    Chưa có giao dịch nào.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
         </Card.Body>

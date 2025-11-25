@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Modal, Form, Button, Alert } from "react-bootstrap";
+import axios from "axios"; // 1. Import Axios
 
 const ChangePasswordModal = ({ show, onHide }) => {
   // State cho Form Đổi mật khẩu
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
+    currentPassword: "", // Backend hiện tại chưa check cái này (cần nâng cấp sau), nhưng cứ để form cho đầy đủ
     newPassword: "",
     confirmPassword: "",
   });
@@ -13,20 +14,20 @@ const ChangePasswordModal = ({ show, onHide }) => {
   // Xử lý thay đổi input trong form mật khẩu
   const handlePasswordFormChange = (e) => {
     setPasswordForm({ ...passwordForm, [e.target.id]: e.target.value });
-    setPasswordStatus(null); // Xóa thông báo khi người dùng bắt đầu nhập lại
+    setPasswordStatus(null);
   };
 
   // Xử lý đổi mật khẩu
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setPasswordStatus(null);
-    const { currentPassword, newPassword, confirmPassword } = passwordForm;
+    const { newPassword, confirmPassword } = passwordForm;
 
     // --- VALIDATION LOGIC ---
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (!newPassword || !confirmPassword) {
       setPasswordStatus({
         type: "danger",
-        message: "Vui lòng điền đầy đủ tất cả các trường.",
+        message: "Vui lòng điền mật khẩu mới và xác nhận mật khẩu.",
       });
       return;
     }
@@ -34,7 +35,7 @@ const ChangePasswordModal = ({ show, onHide }) => {
     if (newPassword !== confirmPassword) {
       setPasswordStatus({
         type: "danger",
-        message: "Mật khẩu mới và Xác nhận mật khẩu không khớp.",
+        message: "Mật khẩu xác nhận không khớp.",
       });
       return;
     }
@@ -48,25 +49,60 @@ const ChangePasswordModal = ({ show, onHide }) => {
     }
     // --- END VALIDATION ---
 
-    // Logic gọi API đổi mật khẩu
-    console.log("Đổi mật khẩu thành công:", newPassword);
+    try {
+      // 2. Lấy thông tin User và Token từ LocalStorage
+      const user = JSON.parse(localStorage.getItem("user"));
+      const token = localStorage.getItem("token");
 
-    // Giả lập thành công
-    setPasswordStatus({
-      type: "success",
-      message: "Mật khẩu đã được thay đổi thành công! 🔒",
-    });
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+      if (!user || !user.id || !token) {
+        setPasswordStatus({
+          type: "danger",
+          message: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
+        });
+        return;
+      }
 
-    // Đóng modal sau khi thông báo thành công (2 giây)
-    setTimeout(() => {
-      onHide();
-      setPasswordStatus(null);
-    }, 2000);
+      // 3. GỌI API THẬT
+      // Gửi field "password" để khớp với logic mình vừa sửa ở userServices.js
+      const res = await axios.put(
+        `http://localhost:8081/api/users/${user.id}`,
+        { password: newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // 4. Kiểm tra phản hồi từ Server
+      if (res.data && res.data.EC === 0) {
+        setPasswordStatus({
+          type: "success",
+          message: "Mật khẩu đã được thay đổi thành công! 🔒",
+        });
+
+        // Reset form
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+
+        // Đóng modal sau 1.5 giây
+        setTimeout(() => {
+          onHide();
+          setPasswordStatus(null);
+        }, 1500);
+      } else {
+        // Lỗi do Backend trả về (ví dụ: lỗi server)
+        setPasswordStatus({
+          type: "danger",
+          message: res.data.EM || "Có lỗi xảy ra khi đổi mật khẩu.",
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi đổi mật khẩu:", error);
+      setPasswordStatus({
+        type: "danger",
+        message: "Lỗi kết nối Server. Vui lòng kiểm tra lại Backend.",
+      });
+    }
   };
 
   return (
@@ -87,6 +123,7 @@ const ChangePasswordModal = ({ show, onHide }) => {
           </Alert>
         )}
         <Form onSubmit={handlePasswordSubmit}>
+          {/* Mật khẩu hiện tại - Hiện tại chỉ để UI cho đẹp, cần backend check sau */}
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold">Mật khẩu hiện tại</Form.Label>
             <Form.Control
@@ -94,8 +131,10 @@ const ChangePasswordModal = ({ show, onHide }) => {
               id="currentPassword"
               value={passwordForm.currentPassword}
               onChange={handlePasswordFormChange}
+              placeholder="Nhập mật khẩu hiện tại"
             />
           </Form.Group>
+
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold">Mật khẩu mới</Form.Label>
             <Form.Control
@@ -103,8 +142,10 @@ const ChangePasswordModal = ({ show, onHide }) => {
               id="newPassword"
               value={passwordForm.newPassword}
               onChange={handlePasswordFormChange}
+              placeholder="Nhập mật khẩu mới"
             />
           </Form.Group>
+
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold">Xác nhận mật khẩu mới</Form.Label>
             <Form.Control
@@ -112,8 +153,10 @@ const ChangePasswordModal = ({ show, onHide }) => {
               id="confirmPassword"
               value={passwordForm.confirmPassword}
               onChange={handlePasswordFormChange}
+              placeholder="Nhập lại mật khẩu mới"
             />
           </Form.Group>
+
           <div className="d-grid mt-4">
             <Button variant="danger" type="submit">
               Lưu Mật Khẩu Mới

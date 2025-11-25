@@ -1,151 +1,203 @@
 // src/layouts/AdminLayout.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
-// Giả lập import logo (thay thế bằng đường dẫn logo thật của bạn)
+// Thay bằng logo thật của bạn
 import logo from "../assets/images/logo.png";
 
 const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [adminName, setAdminName] = useState("Quản trị viên");
 
-  // Hàm xử lý đăng xuất/thoát khu vực
+  // Lấy tên Admin từ localStorage khi component load
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setAdminName(user.fullName || "Quản trị viên");
+    }
+  }, []);
+
+  // Hàm xử lý đăng xuất chuẩn chỉnh
   const handleLogout = () => {
-    const confirm = window.confirm(
-      "Bạn có chắc chắn muốn đăng xuất khỏi khu vực Quản lý?"
-    );
+    const confirm = window.confirm("Bạn có chắc chắn muốn đăng xuất?");
     if (confirm) {
-      // Xử lý xóa token hoặc logic đăng xuất ở đây
-      console.log("Đã đăng xuất quản lý");
-      navigate("/"); // Chuyển hướng về trang login
+      // 1. Xóa sạch bộ nhớ
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+
+      // 2. Đá về trang login
+      navigate("/");
     }
   };
 
   // Style chung cho Nav Link
   const navLinkStyle =
-    "nav-link text-dark d-flex align-items-center gap-2 px-3 py-2 rounded-2 transition-all";
+    "nav-link text-dark d-flex align-items-center gap-2 px-3 py-2 rounded-2 transition-all mb-1";
 
-  // Style cho tab đang active (Giữ nguyên màu cam/vàng để phân biệt chức năng Quản lý Kinh doanh)
+  // Style cho tab đang active
   const activeStyle = {
-    backgroundColor: "rgba(255, 193, 7, 0.3)", // Light warning color background
-    color: "#ffc107", // Warning color text
+    backgroundColor: "rgba(255, 193, 7, 0.2)", // Màu nền vàng nhạt
+    color: "#d97706", // Màu chữ cam đậm
     fontWeight: "600",
+    borderLeft: "4px solid #d97706",
   };
 
-  // Hàm kiểm tra và trả về Props (Class và Style) cho link active
+  // Hàm kiểm tra link active
   const getNavLinkProps = (path) => {
-    const isActive = location.pathname === path;
+    // Active khi đường dẫn bắt đầu bằng path (để active cả trang con)
+    const isActive =
+      location.pathname === path || location.pathname.startsWith(path + "/");
     return {
-      // Dùng text-warning cho màu chữ nổi bật khi active
-      className: `${navLinkStyle} ${isActive ? "text-warning" : "text-dark"}`,
+      className: `${navLinkStyle} ${isActive ? "" : "hover-bg-light"}`,
       style: isActive ? activeStyle : {},
     };
   };
 
-  // Giả lập tên Admin
-  const adminName = "Quản lý";
-
   return (
-    <>
-      <div className="d-flex vh-100 bg-light">
-        {/* --- Sidebar --- */}
-        <div
-          className="d-flex flex-column flex-shrink-0 p-3 border-end"
-          style={{
-            width: "280px",
-            // Gradient cam nhạt (từ giao diện Quản lý cũ)
-            background: "linear-gradient(180deg, #fff3e0 0%, #ffffff 100%)",
-          }}
-        >
-          {/* Logo Area */}
-          <div className="text-center mb-4">
-            <img
-              src={logo}
-              alt="Logo"
-              className="rounded-circle shadow-sm mb-2"
-              style={{
-                width: "100px",
-                height: "100px",
-                objectFit: "cover",
-                cursor: "pointer",
-                border: "3px solid white",
-              }}
-              // Đổi đường dẫn về dashboard Admin
-              onClick={() => navigate("/admin")}
-            />
-            <h6 className="fw-bold text-warning m-0">Xin chào, Manager</h6>
-          </div>
+    <div className="d-flex vh-100 bg-light overflow-hidden">
+      {/* --- SIDEBAR --- */}
+      <div
+        className="d-flex flex-column flex-shrink-0 bg-white shadow-sm"
+        style={{ width: "260px", zIndex: 100 }}
+      >
+        {/* Logo Area */}
+        <div className="p-4 text-center border-bottom">
+          <img
+            src={logo}
+            alt="Logo"
+            className="mb-2"
+            style={{ width: "60px", height: "60px", cursor: "pointer" }}
+            onClick={() => navigate("/admin")}
+          />
+          <h6 className="fw-bold text-uppercase text-primary m-0 ls-1">
+            ADMIN
+          </h6>
+        </div>
 
-          <hr className="text-secondary" />
-
-          {/* Menu Items (Giữ nguyên chức năng, đổi tên đường dẫn và nhãn) */}
-          <ul className="nav flex-column gap-2 mb-auto">
+        {/* Menu Items */}
+        <div className="overflow-auto flex-grow-1 p-3">
+          <ul className="nav flex-column">
             <li className="nav-item">
               <Link to="/admin" {...getNavLinkProps("/admin")}>
-                <i className="bi bi-graph-up-arrow fs-5"></i>
-                Tổng quan & Doanh thu
+                <i className="bi bi-grid-1x2-fill fs-5"></i>
+                Dashboard
               </Link>
             </li>
+
+            <div
+              className="text-uppercase text-muted small fw-bold mt-3 mb-2 ps-3"
+              style={{ fontSize: "0.75rem" }}
+            >
+              Quản lý hệ thống
+            </div>
+
             <li className="nav-item">
-              <Link
-                to="/admin/doctors" // Đổi từ /manager/doctors
-                {...getNavLinkProps("/admin/doctors")}
-              >
+              <Link to="/admin/users" {...getNavLinkProps("/admin/users")}>
                 <i className="bi bi-people-fill fs-5"></i>
-                Quản lý Bác sĩ
+                Người dùng (Users)
               </Link>
             </li>
             <li className="nav-item">
+              <Link to="/admin/doctors" {...getNavLinkProps("/admin/doctors")}>
+                <i className="bi bi-person-video2 fs-5"></i>
+                Đội ngũ Bác sĩ
+              </Link>
+            </li>
+
+            <div
+              className="text-uppercase text-muted small fw-bold mt-3 mb-2 ps-3"
+              style={{ fontSize: "0.75rem" }}
+            >
+              Dịch vụ & Lịch hẹn
+            </div>
+
+            <li className="nav-item">
               <Link
-                to="/admin/services" // Đổi từ /manager/appointments
+                to="/admin/services"
                 {...getNavLinkProps("/admin/services")}
               >
-                <i className="bi bi-calendar-check fs-5"></i>
-                Quản lý dịch vụ
+                <i className="bi bi-hdd-stack-fill fs-5"></i>
+                Dịch vụ khám
               </Link>
             </li>
             <li className="nav-item">
               <Link
-                to="/admin/reports" // Đổi từ /manager/reports
-                {...getNavLinkProps("/admin/reports")}
+                to="/admin/specialties"
+                {...getNavLinkProps("/admin/specialties")}
               >
+                <i className="bi bi-hdd-stack-fill fs-5"></i>
+                Chuyên khoa
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link to="/admin/booking" {...getNavLinkProps("/admin/booking")}>
+                <i className="bi bi-calendar-check-fill fs-5"></i>
+                Quản lý Lịch hẹn
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link to="/admin/reports" {...getNavLinkProps("/admin/reports")}>
                 <i className="bi bi-bar-chart-line-fill fs-5"></i>
-                Báo cáo Chi tiết
+                Báo cáo thống kê
               </Link>
             </li>
           </ul>
+        </div>
 
-          <div className="mt-auto text-center text-muted small">
-            &copy; 2025 Nha Khoa System
+        {/* Footer Sidebar */}
+        <div className="p-3 border-top text-center">
+          <div className="d-grid">
+            <button
+              onClick={handleLogout}
+              className="btn btn-outline-danger btn-sm d-flex align-items-center justify-content-center gap-2"
+            >
+              <i className="bi bi-box-arrow-right"></i> Đăng xuất
+            </button>
+          </div>
+          <div className="mt-2 text-muted small" style={{ fontSize: "0.7rem" }}>
+            Version 1.0.0
           </div>
         </div>
-
-        {/* --- Main Content Wrapper --- */}
-        <div className="flex-grow-1 d-flex flex-column overflow-hidden">
-          {/* Header */}
-          <header className="d-flex justify-content-between align-items-center py-3 px-4 bg-white shadow-sm border-bottom">
-            <div></div>
-
-            <div className="d-flex align-items-center gap-3">
-              <span className="fw-semibold text-dark d-none d-md-block">
-                Xin chào, {adminName}
-              </span>
-              <div className="vr h-100 mx-2"></div>
-              <button
-                className="btn btn-outline-danger btn-sm d-flex align-items-center gap-2"
-                onClick={handleLogout}
-              >
-                <i className="bi bi-box-arrow-right"></i>
-                <strong>Đăng xuất</strong>
-              </button>
-            </div>
-          </header>
-
-          {/* Content Area */}
-          <main className="flex-grow-1 p-4 overflow-auto">{children}</main>
-        </div>
       </div>
-    </>
+
+      {/* --- MAIN CONTENT --- */}
+      <div className="flex-grow-1 d-flex flex-column overflow-hidden">
+        {/* Header */}
+        <header
+          className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center shadow-sm"
+          style={{ height: "70px" }}
+        >
+          <h5 className="m-0 fw-bold text-secondary">
+            {/* Hiển thị tiêu đề trang động dựa trên path (Optional) */}
+            Quản Trị Hệ Thống
+          </h5>
+
+          <div className="d-flex align-items-center gap-3">
+            <div className="text-end d-none d-md-block">
+              <div className="fw-bold text-dark">{adminName}</div>
+              <div
+                className="text-success small"
+                style={{ fontSize: "0.75rem" }}
+              >
+                ● Online
+              </div>
+            </div>
+            <div
+              className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
+              style={{ width: "40px", height: "40px" }}
+            >
+              {adminName.charAt(0)}
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="flex-grow-1 p-4 overflow-auto bg-light">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 };
 

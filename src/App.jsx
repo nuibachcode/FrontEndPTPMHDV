@@ -11,18 +11,15 @@ function App() {
         <Routes>
           {allRoutes.map((route, index) => {
             const PageComponent = route.element;
-            // Nếu layout là null, sử dụng React.Fragment để không render thêm thẻ HTML
             const LayoutComponent = route.layout || React.Fragment;
 
-            // --- 1. Xử lý các Routes yêu cầu đăng nhập/phân quyền ---
             if (route.isPrivate) {
               return (
                 <Route
                   key={index}
                   path={route.path}
-                  // ProtectedRoute sẽ bao bọc cả Layout và Page Component
                   element={
-                    <ProtectedRoute route={route}>
+                    <ProtectedRoute allowedRoles={route.roles}>
                       <LayoutComponent>
                         <PageComponent />
                       </LayoutComponent>
@@ -32,7 +29,6 @@ function App() {
               );
             }
 
-            // --- 2. Xử lý các Routes công khai (Public) ---
             return (
               <Route
                 key={index}

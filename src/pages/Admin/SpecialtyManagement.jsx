@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Card,
@@ -6,18 +6,14 @@ import {
   Form,
   Button,
   Modal,
-  Alert,
+  Spinner,
 } from "react-bootstrap";
-
-// Dữ liệu giả định Specialty (Chuyên khoa)
-const mockSpecialties = [
-  { id: 1, name: "Chỉnh Nha", description: "Chuyên sắp xếp lại răng và hàm." },
-  { id: 2, name: "Nha Tổng Quát", description: "Kiểm tra và điều trị cơ bản." },
-  { id: 3, name: "Cấy Ghép Implant", description: "Phục hình răng đã mất." },
-];
+import axios from "axios";
 
 const SpecialtyManagement = () => {
-  const [specialties, setSpecialties] = useState(mockSpecialties);
+  const [specialties, setSpecialties] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
   const [currentSpecialty, setCurrentSpecialty] = useState({
     id: null,
@@ -25,109 +21,173 @@ const SpecialtyManagement = () => {
     description: "",
   });
 
+  useEffect(() => {
+    fetchSpecialties();
+  }, []);
+
+  const fetchSpecialties = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get("http://localhost:8081/api/specialties");
+      if (res.data.EC === 0) {
+        // Map dữ liệu: nameSpecialty -> name
+        const mappedData = res.data.DT.map((item) => ({
+          id: item.id,
+          name: item.nameSpecialty,
+          description: item.description,
+        }));
+        setSpecialties(mappedData);
+      }
+    } catch (e) {
+      console.log("Lỗi lấy chuyên khoa:", e);
+    }
+    setIsLoading(false);
+  };
+
   const handleClose = () => {
     setShowModal(false);
     setCurrentSpecialty({ id: null, name: "", description: "" });
   };
 
-  const handleShow = (specialty = { id: null, name: "", description: "" }) => {
-    setCurrentSpecialty(specialty);
+  const handleShow = (specialty = null) => {
+    if (specialty) setCurrentSpecialty(specialty);
+    else setCurrentSpecialty({ id: null, name: "", description: "" });
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Logic gọi API CREATE hoặc UPDATE bảng Specialty
+    const token = localStorage.getItem("token");
+    try {
+      let res;
+      const payload = {
+        name: currentSpecialty.name,
+        description: currentSpecialty.description,
+      };
 
-    if (currentSpecialty.id) {
-      // UPDATE
-      setSpecialties(
-        specialties.map((s) =>
-          s.id === currentSpecialty.id ? currentSpecialty : s
-        )
-      );
-      alert("Cập nhật chuyên khoa thành công!");
-    } else {
-      // CREATE
-      const newId = specialties.length + 1;
-      setSpecialties([...specialties, { ...currentSpecialty, id: newId }]);
-      alert("Thêm chuyên khoa mới thành công!");
+      if (currentSpecialty.id) {
+        // UPDATE
+        res = await axios.put(
+          `http://localhost:8081/api/specialties/${currentSpecialty.id}`,
+          payload,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else {
+        // CREATE
+        res = await axios.post(
+          "http://localhost:8081/api/specialties",
+          payload,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      if (res.data.EC === 0) {
+        alert(
+          currentSpecialty.id ? "Cập nhật thành công!" : "Thêm mới thành công!"
+        );
+        fetchSpecialties();
+        handleClose();
+      } else {
+        alert(res.data.EM);
+      }
+    } catch (e) {
+      alert("Lỗi hệ thống");
     }
-    handleClose();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Xác nhận xóa chuyên khoa này?")) {
-      // Logic gọi API DELETE Specialty
-      setSpecialties(specialties.filter((s) => s.id !== id));
-      alert("Xóa chuyên khoa thành công!");
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.delete(
+          `http://localhost:8081/api/specialties/${id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (res.data.EC === 0) {
+          alert("Xóa thành công!");
+          fetchSpecialties();
+        } else {
+          alert(res.data.EM);
+        }
+      } catch (e) {
+        alert("Lỗi khi xóa");
+      }
     }
   };
 
   return (
-    <Container fluid>
-      <h2 className="text-primary fw-bold mb-4">Quản lý Chuyên khoa</h2>
-
-      <div className="d-flex justify-content-end mb-3">
+    <Container fluid className="py-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="text-primary fw-bold m-0">
+          <i className="bi bi-heart-pulse-fill me-2"></i>Quản lý Chuyên khoa
+        </h2>
         <Button variant="success" onClick={() => handleShow()}>
-          + Thêm Chuyên khoa mới
+          <i className="bi bi-plus-circle me-2"></i> Thêm Chuyên khoa
         </Button>
       </div>
 
       <Card className="shadow-sm border-0">
-        <Card.Body>
-          <Table striped hover responsive>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Tên Chuyên khoa</th>
-                <th>Mô tả</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {specialties.map((spec) => (
-                <tr key={spec.id}>
-                  <td>{spec.id}</td>
-                  <td>{spec.name}</td>
-                  <td>{spec.description}</td>
-                  <td>
-                    <Button
-                      variant="info"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => handleShow(spec)}
-                    >
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(spec.id)}
-                    >
-                      Xóa
-                    </Button>
-                  </td>
+        <Card.Body className="p-0">
+          {isLoading ? (
+            <div className="text-center p-5">
+              <Spinner animation="border" />
+            </div>
+          ) : (
+            <Table hover responsive className="align-middle m-0">
+              <thead className="bg-light">
+                <tr>
+                  <th className="ps-4">ID</th>
+                  <th>Tên Chuyên khoa</th>
+                  <th>Mô tả</th>
+                  <th className="text-center">Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {specialties.map((spec) => (
+                  <tr key={spec.id}>
+                    <td className="ps-4">#{spec.id}</td>
+                    <td className="fw-bold text-primary">{spec.name}</td>
+                    <td>{spec.description}</td>
+                    <td className="text-center">
+                      <Button
+                        variant="light"
+                        size="sm"
+                        className="me-2 text-primary border-primary"
+                        onClick={() => handleShow(spec)}
+                      >
+                        <i className="bi bi-pencil-square"></i>
+                      </Button>
+                      <Button
+                        variant="light"
+                        size="sm"
+                        className="text-danger border-danger"
+                        onClick={() => handleDelete(spec.id)}
+                      >
+                        <i className="bi bi-trash"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
         </Card.Body>
       </Card>
 
-      {/* Modal Sửa/Thêm */}
-      <Modal show={showModal} onHide={handleClose}>
+      {/* Modal */}
+      <Modal show={showModal} onHide={handleClose} centered>
         <Modal.Header closeButton className="bg-primary text-white">
           <Modal.Title>
-            {currentSpecialty.id
-              ? "Cập nhật Chuyên khoa"
-              : "Thêm Chuyên khoa mới"}
+            {currentSpecialty.id ? "Cập nhật" : "Thêm mới"}
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
-          <Modal.Body>
+          <Modal.Body className="p-4">
             <Form.Group className="mb-3">
-              <Form.Label>Tên Chuyên khoa</Form.Label>
+              <Form.Label className="fw-bold">
+                Tên Chuyên khoa <span className="text-danger">*</span>
+              </Form.Label>
               <Form.Control
                 type="text"
                 value={currentSpecialty.name}
@@ -141,7 +201,7 @@ const SpecialtyManagement = () => {
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>Mô tả</Form.Label>
+              <Form.Label className="fw-bold">Mô tả</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
@@ -160,7 +220,7 @@ const SpecialtyManagement = () => {
               Hủy
             </Button>
             <Button variant="primary" type="submit">
-              Lưu
+              Lưu Thay Đổi
             </Button>
           </Modal.Footer>
         </Form>

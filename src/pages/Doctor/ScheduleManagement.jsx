@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Card,
@@ -7,11 +7,13 @@ import {
   Row,
   Col,
   Table,
-  Alert,
   Badge,
+  Alert,
 } from "react-bootstrap";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import axios from "axios";
+import moment from "moment"; // Nhớ cài moment: npm install moment
 
 const timeSlots = [
   "08:00",
@@ -24,64 +26,126 @@ const timeSlots = [
   "16:00",
 ];
 
-const mockExistingSchedules = [
-  {
-    id: 201,
-    date: "2025-12-10",
-    timeStart: "08:00",
-    timeEnd: "12:00",
-    maxPatient: 5,
-    status: "Active",
-  },
-  {
-    id: 202,
-    date: "2025-12-11",
-    timeStart: "13:00",
-    timeEnd: "17:00",
-    maxPatient: 4,
-    status: "Active",
-  },
-];
-
 const ScheduleManagement = () => {
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [timeRange, setTimeRange] = useState({ start: "", end: "" });
-  const [maxPatient, setMaxPatient] = useState(3);
-  const [schedules, setSchedules] = useState(mockExistingSchedules);
+  const [maxPatient, setMaxPatient] = useState(5);
+  const [schedules, setSchedules] = useState([]);
+  const [statusMsg, setStatusMsg] = useState(null); // Thông báo
 
-  const handleCreateSchedule = (e) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  // 1. Load danh sách lịch khi vào trang
+  useEffect(() => {
+    if (user && user.id) {
+      fetchSchedules();
+    }
+  }, []);
+
+  const fetchSchedules = async () => {
+    try {
+      const res = await axios.get(
+        `http://localhost:8081/api/schedules/doctor?doctorId=${user.id}`
+      );
+      if (res.data.EC === 0) {
+        setSchedules(res.data.DT);
+      }
+    } catch (e) {
+      console.log("Lỗi lấy lịch:", e);
+    }
+  };
+
+  const handleCreateSchedule = async (e) => {
     e.preventDefault();
     if (!selectedDate || !timeRange.start || !timeRange.end) {
-      alert("Vui lòng điền đủ thông tin lịch làm việc.");
+      alert("Vui lòng điền đủ thông tin!");
       return;
     }
 
-    const newSchedule = {
-      id: Date.now(),
-      date: selectedDate.toISOString().split("T")[0],
-      timeStart: timeRange.start,
-      timeEnd: timeRange.end,
-      maxPatient: parseInt(maxPatient),
-      status: "Pending", // Có thể cần Admin duyệt
-    };
+    const formattedDate = moment(selectedDate).format("YYYY-MM-DD");
 
-    // Logic gọi API để CREATE Schedule (Bảng Schedule)
-    setSchedules([...schedules, newSchedule]);
-    alert("Lịch làm việc đã được đăng ký thành công!");
+    try {
+      const payload = {
+        doctorId: user.id,
+        dateWork: formattedDate,
+        timeStart: timeRange.start,
+        timeEnd: timeRange.end,
+        maxPatient: parseInt(maxPatient),
+        description: "Lịch khám bệnh",
+      };
+
+      // --- LẤY TOKEN TỪ LOCALSTORAGE ---
+      // Kiểm tra xem lúc Login bạn lưu token tên là gì (token, accessToken, hay nằm trong object user)
+      const token = localStorage.getItem("token");
+
+      // Gọi API tạo lịch kèm Header
+      const res = await axios.post(
+        "http://localhost:8081/api/schedules",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Gửi token kèm theo
+          },
+        }
+      );
+
+      if (res.data.EC === 0) {
+        setStatusMsg({ type: "success", text: "Đăng ký lịch thành công!" });
+        fetchSchedules();
+      } else {
+        setStatusMsg({ type: "danger", text: res.data.EM });
+      }
+    } catch (error) {
+      console.log("Lỗi tạo lịch:", error);
+      // Log lỗi chi tiết từ backend để dễ debug
+      if (error.response) {
+        console.log(error.response.data);
+        if (error.response.status === 401)
+          alert("Hết phiên đăng nhập hoặc chưa login!");
+      }
+      setStatusMsg({ type: "danger", text: "Lỗi hệ thống" });
+    }
+
+    setTimeout(() => setStatusMsg(null), 3000);
   };
+  const handleDelete = async (id) => {
+    if (window.confirm("Bạn có chắc muốn xóa lịch này?")) {
+      try {
+        const token = localStorage.getItem("token"); // Lấy token
 
-  // Logic gọi API để DELETE Schedule
-  const handleDelete = (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa lịch này không?")) {
-      setSchedules(schedules.filter((s) => s.id !== id));
+        const res = await axios.delete(
+          `http://localhost:8081/api/schedules/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`, // Gửi token
+            },
+          }
+        );
+
+        if (res.data.EC === 0) {
+          setStatusMsg({ type: "success", text: "Xóa lịch thành công" });
+          fetchSchedules();
+        } else {
+          alert(res.data.EM);
+        }
+      } catch (e) {
+        console.log("Lỗi xóa:", e);
+        if (e.response && e.response.status === 401) {
+          alert("Bạn không có quyền xóa hoặc chưa đăng nhập!");
+        }
+      }
     }
   };
 
   return (
-    <Container fluid>
-      <h2 className="text-primary fw-bold mb-4">Quản lý Lịch Làm Việc</h2>
+    <Container fluid className="py-4">
+      <h2 className="text-primary fw-bold mb-4">
+        <i className="bi bi-calendar-check me-2"></i>Quản lý Lịch Làm Việc
+      </h2>
 
-      {/* Form Đăng ký Lịch */}
+      {statusMsg && <Alert variant={statusMsg.type}>{statusMsg.text}</Alert>}
+
+      {/* Form Đăng ký */}
       <Card className="shadow-sm border-0 mb-4">
         <Card.Header className="bg-success text-white fw-bold">
           Đăng Ký Ca Làm Việc Mới
@@ -96,7 +160,6 @@ const ScheduleManagement = () => {
                     selected={selectedDate}
                     onChange={(date) => setSelectedDate(date)}
                     dateFormat="dd/MM/yyyy"
-                    placeholderText="Chọn ngày"
                     className="form-control"
                     minDate={new Date()}
                   />
@@ -146,7 +209,7 @@ const ScheduleManagement = () => {
                   <Form.Control
                     type="number"
                     min="1"
-                    max="10"
+                    max="20"
                     value={maxPatient}
                     onChange={(e) => setMaxPatient(e.target.value)}
                     required
@@ -156,55 +219,55 @@ const ScheduleManagement = () => {
             </Row>
             <div className="text-end">
               <Button variant="primary" type="submit">
-                Đăng Ký Lịch
+                <i className="bi bi-plus-circle me-1"></i> Đăng Ký Lịch
               </Button>
             </div>
           </Form>
         </Card.Body>
       </Card>
 
-      {/* Danh sách Lịch đã đăng ký */}
+      {/* Danh sách Lịch */}
       <Card className="shadow-sm border-0">
         <Card.Header className="bg-light fw-bold">
-          Lịch Làm Việc Đã Đăng Ký
+          Danh Sách Lịch Đã Đăng Ký
         </Card.Header>
         <Card.Body>
-          <Table striped hover responsive>
+          <Table striped hover responsive className="align-middle">
             <thead>
               <tr>
-                <th>Ngày</th>
+                <th>Ngày làm việc</th>
                 <th>Thời gian</th>
                 <th>Max Bệnh nhân</th>
-                <th>Trạng thái</th>
                 <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {schedules.map((schedule) => (
-                <tr key={schedule.id}>
-                  <td>{schedule.date}</td>
-                  <td>
-                    {schedule.timeStart} - {schedule.timeEnd}
-                  </td>
-                  <td>{schedule.maxPatient}</td>
-                  <td>
-                    <Badge
-                      bg={schedule.status === "Active" ? "info" : "secondary"}
-                    >
-                      {schedule.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(schedule.id)}
-                    >
-                      Xóa
-                    </Button>
+              {schedules && schedules.length > 0 ? (
+                schedules.map((schedule) => (
+                  <tr key={schedule.id}>
+                    <td>{moment(schedule.dateWork).format("DD/MM/YYYY")}</td>
+                    <td className="fw-bold text-primary">
+                      {schedule.timeStart} - {schedule.timeEnd}
+                    </td>
+                    <td>{schedule.maxPatient}</td>
+                    <td>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => handleDelete(schedule.id)}
+                      >
+                        <i className="bi bi-trash"></i> Xóa
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="text-center">
+                    Chưa có lịch làm việc nào.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </Table>
         </Card.Body>

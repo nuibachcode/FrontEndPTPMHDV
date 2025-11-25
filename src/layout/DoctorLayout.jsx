@@ -1,100 +1,102 @@
-import React from "react";
+// src/layouts/DoctorLayout.jsx
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
-// Giả lập import logo nếu bạn chưa có file ảnh thật
-// Cần phải có file này hoặc thay thế bằng component logo thật
+// Thay bằng logo thật của bạn
 import logo from "../assets/images/logo.png";
 
 const DoctorLayout = ({ children }) => {
   const navigate = useNavigate();
-  const location = useLocation(); // Lấy URL hiện tại để xác định link active
+  const location = useLocation();
+  const [doctorName, setDoctorName] = useState("Bác sĩ");
 
-  // Hàm xử lý đăng xuất/thoát khu vực
+  // Lấy tên Bác sĩ từ localStorage
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setDoctorName(user.fullName || "Bác sĩ");
+    }
+  }, []);
+
+  // Hàm xử lý đăng xuất chuẩn
   const handleLogout = () => {
-    const confirm = window.confirm(
-      "Bạn có chắc chắn muốn thoát khỏi khu vực quản lý Bác sĩ?"
-    );
+    const confirm = window.confirm("Bạn có chắc chắn muốn đăng xuất?");
     if (confirm) {
-      // Thực hiện logic đăng xuất (xóa token/session) ở đây
-      console.log("Đã đăng xuất Bác sĩ");
-      navigate("/"); // Chuyển hướng về trang đăng nhập
+      // 1. Xóa sạch bộ nhớ
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+
+      // 2. Đá về trang login
+      navigate("/");
     }
   };
 
   // Style chung cho Nav Link
   const navLinkStyle =
-    "nav-link text-dark d-flex align-items-center gap-2 px-3 py-2 rounded-2 transition-all";
+    "nav-link text-dark d-flex align-items-center gap-2 px-3 py-2 rounded-2 transition-all mb-1";
 
-  // Style cho tab đang active
+  // Style cho tab đang active (Màu XANH DƯƠNG cho Bác sĩ)
   const activeStyle = {
-    backgroundColor: "rgba(0, 123, 255, 0.15)", // Nền xanh nhạt
-    color: "#007bff", // Chữ màu xanh đậm hơn
+    backgroundColor: "rgba(13, 110, 253, 0.15)", // Màu nền xanh nhạt
+    color: "#0d6efd", // Màu chữ xanh đậm
     fontWeight: "600",
+    borderLeft: "4px solid #0d6efd",
   };
 
-  // Hàm kiểm tra và trả về Props (Class và Style) cho link active
+  // Hàm kiểm tra link active
   const getNavLinkProps = (path) => {
-    const isActive = location.pathname === path;
+    const isActive =
+      location.pathname === path || location.pathname.startsWith(path + "/");
     return {
-      // Nếu active thì thêm class 'text-primary' để đảm bảo màu chữ là xanh đậm
-      className: `${navLinkStyle} ${isActive ? "text-primary" : "text-dark"}`,
-      // Áp dụng style active
+      className: `${navLinkStyle} ${isActive ? "" : "hover-bg-light"}`,
       style: isActive ? activeStyle : {},
     };
   };
 
   return (
-    <>
-      <div className="d-flex vh-100 bg-light">
-        {/* --- Sidebar --- */}
-        <div
-          className="d-flex flex-column flex-shrink-0 p-3 border-end"
-          style={{
-            width: "280px",
-            // Sử dụng gradient nhẹ nhàng tương tự AdminLayout
-            background: "linear-gradient(180deg, #e3f2fd 0%, #ffffff 100%)",
-          }}
-        >
-          {/* Logo Area */}
-          <div className="text-center mb-4">
-            <img
-              src={logo}
-              alt="Logo"
-              className="rounded-circle shadow-sm mb-2"
-              style={{
-                width: "100px",
-                height: "100px",
-                objectFit: "cover",
-                cursor: "pointer",
-                border: "3px solid white",
-              }}
-              // Click logo về Dashboard của Bác sĩ
-              onClick={() => navigate("/doctor")}
-            />
-            <h6 className="fw-bold text-success m-0">
-              {/* Dùng màu xanh lá cây (success) hoặc màu khác để phân biệt với Admin */}
-              Xin chào, Bác sĩ
-            </h6>
-          </div>
+    <div className="d-flex vh-100 bg-light overflow-hidden">
+      {/* --- SIDEBAR --- */}
+      <div
+        className="d-flex flex-column flex-shrink-0 bg-white shadow-sm"
+        style={{ width: "260px", zIndex: 100 }}
+      >
+        {/* Logo Area */}
+        <div className="p-4 text-center border-bottom">
+          <img
+            src={logo}
+            alt="Logo"
+            className="mb-2"
+            style={{ width: "60px", height: "60px", cursor: "pointer" }}
+            onClick={() => navigate("/doctor")}
+          />
+          <h6 className="fw-bold text-uppercase text-info m-0 ls-1">
+            Doctor Portal
+          </h6>
+        </div>
 
-          <hr className="text-secondary" />
-
-          {/* Menu Items */}
-          <ul className="nav flex-column gap-2 mb-auto">
+        {/* Menu Items */}
+        <div className="overflow-auto flex-grow-1 p-3">
+          <ul className="nav flex-column">
             <li className="nav-item">
               <Link to="/doctor" {...getNavLinkProps("/doctor")}>
-                <i className="bi bi-speedometer2 fs-5"></i>{" "}
-                {/* Icon Dashboard */}
-                Dashboard (Lịch hẹn)
+                <i className="bi bi-speedometer2 fs-5"></i>
+                Dashboard (Tổng quan)
               </Link>
             </li>
+
+            <div
+              className="text-uppercase text-muted small fw-bold mt-3 mb-2 ps-3"
+              style={{ fontSize: "0.75rem" }}
+            >
+              Lịch trình & Khám bệnh
+            </div>
+
             <li className="nav-item">
               <Link
                 to="/doctor/schedule"
                 {...getNavLinkProps("/doctor/schedule")}
               >
-                <i className="bi bi-calendar-week fs-5"></i>{" "}
-                {/* Icon Lịch làm */}
+                <i className="bi bi-calendar-week fs-5"></i>
                 Quản lý Lịch làm
               </Link>
             </li>
@@ -103,65 +105,84 @@ const DoctorLayout = ({ children }) => {
                 to="/doctor/patient-records"
                 {...getNavLinkProps("/doctor/patient-records")}
               >
-                <i className="bi bi-journal-medical fs-5"></i>{" "}
-                {/* Icon Hồ sơ */}
+                <i className="bi bi-journal-medical fs-5"></i>
                 Hồ sơ Bệnh nhân
               </Link>
             </li>
+
+            <div
+              className="text-uppercase text-muted small fw-bold mt-3 mb-2 ps-3"
+              style={{ fontSize: "0.75rem" }}
+            >
+              Cá nhân
+            </div>
+
             <li className="nav-item">
               <Link
                 to="/doctor/profile"
                 {...getNavLinkProps("/doctor/profile")}
               >
-                <i className="bi bi-person-circle fs-5"></i>{" "}
-                {/* Icon Thông tin */}
-                Cập nhật Thông tin
+                <i className="bi bi-person-circle fs-5"></i>
+                Thông tin cá nhân
               </Link>
             </li>
           </ul>
+        </div>
 
-          {/* Footer của Sidebar */}
-          <div className="mt-auto text-center text-muted small">
-            &copy; 2025 Nha Khoa System
+        {/* Footer Sidebar */}
+        <div className="p-3 border-top text-center">
+          <div className="d-grid">
+            <button
+              onClick={handleLogout}
+              className="btn btn-outline-danger btn-sm d-flex align-items-center justify-content-center gap-2"
+            >
+              <i className="bi bi-box-arrow-right"></i> Đăng xuất
+            </button>
           </div>
         </div>
-
-        {/* --- Main Content Wrapper --- */}
-        <div className="flex-grow-1 d-flex flex-column overflow-hidden">
-          {/* Header */}
-          <header className="d-flex justify-content-between align-items-center py-3 px-4 bg-white shadow-sm border-bottom">
-            {/* Về trang chủ công cộng */}
-            <div>
-              <Link
-                to="/"
-                className="btn btn-light btn-sm d-flex align-items-center gap-2 text-secondary border-0"
-              >
-                <i className="bi bi-arrow-left"></i>
-                Về trang chủ công cộng
-              </Link>
-            </div>
-
-            {/* User Profile / Logout */}
-            <div className="d-flex align-items-center gap-3">
-              <span className="fw-semibold text-dark d-none d-md-block">
-                Tài khoản Bác sĩ
-              </span>
-              <div className="vr h-100 mx-2"></div>
-              <button
-                className="btn btn-outline-danger btn-sm d-flex align-items-center gap-2"
-                onClick={handleLogout} // Gọi hàm xác nhận đăng xuất
-              >
-                <i className="bi bi-box-arrow-right"></i>
-                <strong>Đăng xuất</strong>
-              </button>
-            </div>
-          </header>
-
-          {/* Content Area */}
-          <main className="flex-grow-1 p-4 overflow-auto">{children}</main>
-        </div>
       </div>
-    </>
+
+      {/* --- MAIN CONTENT --- */}
+      <div className="flex-grow-1 d-flex flex-column overflow-hidden">
+        {/* Header */}
+        <header
+          className="bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center shadow-sm"
+          style={{ height: "70px" }}
+        >
+          <div>
+            <Link
+              to="/"
+              className="btn btn-light btn-sm text-secondary fw-semibold d-flex align-items-center gap-2"
+            >
+              <i className="bi bi-arrow-left"></i> Web Trang Chủ
+            </Link>
+          </div>
+
+          <div className="d-flex align-items-center gap-3">
+            <div className="text-end d-none d-md-block">
+              <div className="fw-bold text-dark">BS. {doctorName}</div>
+              <div
+                className="text-success small"
+                style={{ fontSize: "0.75rem" }}
+              >
+                ● Đang làm việc
+              </div>
+            </div>
+            <div
+              className="rounded-circle bg-info text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
+              style={{ width: "40px", height: "40px" }}
+            >
+              {doctorName.charAt(0)}
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="flex-grow-1 p-4 overflow-auto bg-light">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 };
 

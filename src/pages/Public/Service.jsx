@@ -1,14 +1,46 @@
-import React from "react";
-import service1 from "../../../assets/images/anhservice.png";
-import service2 from "../../../assets/images/anh_herodetail5.png";
-import service3 from "../../../assets/images/anh_herodetail6.png";
-import service4 from "../../../assets/images/anh_herodetail4.webp";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import service1 from "../../assets/images/anhservice.png";
+import service2 from "../../assets/images/anh_herodetail5.png";
+import service3 from "../../assets/images/anh_herodetail6.png";
+import service4 from "../../assets/images/anh_herodetail4.webp";
 
 export default function ServicesDetail() {
+  const [services, setServices] = useState([]);
+
+  // Ảnh dùng cho Top 3 dịch vụ nổi bật
+  const serviceImages = [service2, service3, service4];
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      let res = await axios.get("http://localhost:8081/api/services");
+      if (res && res.data && res.data.EC === 0) {
+        setServices(res.data.DT);
+      }
+    } catch (error) {
+      console.log("Lỗi lấy danh sách dịch vụ:", error);
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
+  };
+
+  // TÁCH DỮ LIỆU
+  const featuredServices = services.slice(0, 3); // 3 cái đầu có ảnh
+  const otherServices = services.slice(3); // Những cái sau dạng danh sách
+
   return (
     <div style={{ marginTop: "80px" }}>
       <div style={{ backgroundColor: "#f8f9fa" }}>
-        {/* --- PHẦN BANNER --- */}
+        {/* --- 1. BANNER --- */}
         <section
           className="text-center text-white d-flex align-items-center justify-content-center"
           style={{
@@ -39,105 +71,136 @@ export default function ServicesDetail() {
           </div>
         </section>
 
-        {/* --- PHẦN CHI TIẾT DỊCH VỤ --- */}
         <section className="container py-5">
+          {/* --- 2. CÁC DỊCH VỤ NỔI BẬT (TOP 3 - CÓ ẢNH) --- */}
           <div className="text-center mb-5">
             <h2 className="fw-bold" style={{ color: "#3ec9c9ff" }}>
               Các dịch vụ nổi bật
             </h2>
             <p className="text-muted">
-              Được thực hiện bởi đội ngũ bác sĩ chuyên môn cao cùng công nghệ
-              hiện đại.
+              Công nghệ hiện đại, bác sĩ chuyên môn cao.
             </p>
           </div>
 
-          {/* Dịch vụ 1 */}
-          <div className="row align-items-center mb-5">
-            <div className="col-md-6 mb-4 mb-md-0">
-              <img
-                src={service2}
-                alt="Tẩy trắng răng"
-                className="img-fluid rounded-4 shadow"
-              />
-            </div>
-            <div className="col-md-6">
-              <h3 className="fw-bold mb-3">Tẩy trắng răng</h3>
-              <p className="text-muted">
-                Sử dụng công nghệ ánh sáng lạnh hiện đại giúp răng trắng sáng tự
-                nhiên chỉ sau một lần điều trị. Quy trình an toàn, không gây ê
-                buốt, được kiểm định nghiêm ngặt theo tiêu chuẩn nha khoa quốc
-                tế.
-              </p>
-              <ul>
-                <li>Thời gian thực hiện: 30 – 45 phút</li>
-                <li>Hiệu quả duy trì: 12 – 18 tháng</li>
-                <li>Không gây hại men răng</li>
-              </ul>
-            </div>
-          </div>
+          {featuredServices &&
+            featuredServices.map((item, index) => {
+              let rowClass =
+                index % 2 !== 0
+                  ? "row align-items-center mb-5 flex-md-row-reverse"
+                  : "row align-items-center mb-5";
+              let imgDisplay = serviceImages[index % serviceImages.length];
 
-          {/* Dịch vụ 2 */}
-          <div className="row align-items-center mb-5 flex-md-row-reverse">
-            <div className="col-md-6 mb-4 mb-md-0">
-              <img
-                src={service3}
-                alt="Niềng răng thẩm mỹ"
-                className="img-fluid rounded-4 shadow"
-              />
-            </div>
-            <div className="col-md-6">
-              <h3 className="fw-bold mb-3">Niềng răng thẩm mỹ</h3>
-              <p className="text-muted">
-                Giải pháp chỉnh nha toàn diện giúp sắp xếp lại răng sai lệch,
-                khớp cắn chuẩn xác và nụ cười hài hòa. Có nhiều lựa chọn: niềng
-                kim loại, sứ, hoặc trong suốt Invisalign.
-              </p>
-              <ul>
-                <li>Thời gian điều trị: 12 – 24 tháng</li>
-                <li>Định kỳ kiểm tra: mỗi 6 tuần</li>
-                <li>Không gây đau, dễ vệ sinh</li>
-              </ul>
-            </div>
-          </div>
+              return (
+                <div className={rowClass} key={item.id || index}>
+                  <div className="col-md-6 mb-4 mb-md-0">
+                    <img
+                      src={imgDisplay}
+                      alt={item.nameService}
+                      className="img-fluid rounded-4 shadow"
+                      style={{
+                        width: "100%",
+                        objectFit: "cover",
+                        maxHeight: "350px",
+                      }}
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <h3 className="fw-bold mb-3">{item.nameService}</h3>
+                    {item.Specialty && (
+                      <span className="badge bg-info mb-2">
+                        {item.Specialty.nameSpecialty}
+                      </span>
+                    )}
+                    <p
+                      className="text-muted"
+                      style={{ whiteSpace: "pre-line" }}
+                    >
+                      {item.description}
+                    </p>
+                    <ul className="list-unstyled mt-3">
+                      <li className="mb-2">
+                        <i className="fas fa-clock me-2 text-primary"></i>
+                        <strong>Thời gian:</strong> {item.duration}
+                      </li>
+                      <li className="mb-2">
+                        <i className="fas fa-tag me-2 text-primary"></i>
+                        <strong>Chi phí:</strong>{" "}
+                        {item.price ? formatCurrency(item.price) : "Liên hệ"}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              );
+            })}
 
-          {/* Dịch vụ 3 */}
-          <div className="row align-items-center mb-5">
-            <div className="col-md-6 mb-4 mb-md-0">
-              <img
-                src={service4}
-                alt="Cấy ghép Implant"
-                className="img-fluid rounded-4 shadow"
-              />
+          {/* --- 3. DANH SÁCH CÁC DỊCH VỤ KHÁC (KHÔNG ẢNH - LIST VIEW) --- */}
+          {otherServices && otherServices.length > 0 && (
+            <div className="mt-5">
+              <div className="text-center mb-4">
+                <h3 className="fw-bold text-secondary">
+                  Bảng giá dịch vụ khác
+                </h3>
+                <p className="text-muted">
+                  Tham khảo thêm các dịch vụ chăm sóc toàn diện
+                </p>
+              </div>
+
+              <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div className="card-body p-0">
+                  {otherServices.map((item, index) => (
+                    <div
+                      key={item.id || index}
+                      className="d-flex flex-column flex-md-row justify-content-between align-items-center p-4 border-bottom hover-bg-light transition"
+                      style={{
+                        backgroundColor: index % 2 === 0 ? "#fff" : "#fcfcfc",
+                      }} // Tạo màu nền xen kẽ cho dễ nhìn
+                    >
+                      {/* Cột Tên & Mô tả ngắn */}
+                      <div className="mb-3 mb-md-0" style={{ flex: 2 }}>
+                        <h5 className="fw-bold text-primary mb-1">
+                          {item.nameService}
+                        </h5>
+                        <p className="text-muted small mb-0">
+                          {item.Specialty?.nameSpecialty && (
+                            <span className="badge bg-light text-dark border me-2">
+                              {item.Specialty.nameSpecialty}
+                            </span>
+                          )}
+                          {item.description.length > 100
+                            ? item.description.substring(0, 100) + "..."
+                            : item.description}
+                        </p>
+                      </div>
+
+                      {/* Cột Thời gian */}
+                      <div
+                        className="mb-3 mb-md-0 text-center px-4"
+                        style={{ flex: 1 }}
+                      >
+                        <small className="text-muted d-block">Thời gian</small>
+                        <span className="fw-semibold">
+                          <i className="far fa-clock me-1"></i>
+                          {item.duration}
+                        </span>
+                      </div>
+
+                      {/* Cột Giá & Nút */}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="col-md-6">
-              <h3 className="fw-bold mb-3">Cấy ghép Implant</h3>
-              <p className="text-muted">
-                Phục hồi răng mất bằng trụ Titanium tích hợp sinh học, mang lại
-                cảm giác và chức năng như răng thật. Quy trình được thực hiện
-                trong môi trường vô trùng tuyệt đối.
-              </p>
-              <ul>
-                <li>Tuổi thọ implant lên đến 20 năm</li>
-                <li>Giúp bảo tồn xương hàm tự nhiên</li>
-                <li>Thẩm mỹ cao, ăn nhai tốt</li>
-              </ul>
-            </div>
-          </div>
+          )}
         </section>
 
-        {/* --- PHẦN CAM KẾT --- */}
+        {/* --- 4. CAM KẾT --- */}
         <section className="bg-white py-5 text-center border-top">
           <div className="container">
             <h3 className="fw-bold mb-3" style={{ color: "#3ec9c9ff" }}>
               Cam kết của chúng tôi
             </h3>
-            <p className="text-muted mb-4">
-              SmileCare tự hào là địa chỉ nha khoa được hàng nghìn khách hàng
-              tin tưởng, với đội ngũ bác sĩ tận tâm, trang thiết bị hiện đại và
-              dịch vụ chăm sóc khách hàng chu đáo.
-            </p>
-
             <div className="d-flex justify-content-center gap-4 flex-wrap">
+              {/* ... Nội dung cam kết (giữ nguyên) ... */}
               <div
                 className="p-4 shadow rounded-3 bg-light"
                 style={{ maxWidth: "300px" }}

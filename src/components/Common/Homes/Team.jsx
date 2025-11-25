@@ -1,11 +1,31 @@
-import React from "react";
-import Dr_David_Lee from "../../../assets/images/Dr_David_Lee.jpg";
-import Dr_Amanda_Reed from "../../../assets/images/Dr_Amanda_Reed.jpg";
-import Dr_Emily_Clark from "../../../assets/images/Dr_Emily_Clark.jpg";
+import React, { useState, useEffect } from "react";
+import axios from "axios"; // 1. Import Axios
+
+// Bỏ các import Dr_David_Lee... đi vì giờ lấy ảnh từ DB
 import khachhang1 from "../../../assets/images/khachhang3.jpg";
 import khachhang2 from "../../../assets/images/khachhang4.jpg";
 
 export default function TeamAndTestimonials() {
+  // 2. Tạo state lưu danh sách bác sĩ
+  const [doctors, setDoctors] = useState([]);
+
+  // 3. Gọi API khi component load
+  useEffect(() => {
+    fetchDoctors();
+  }, []);
+
+  const fetchDoctors = async () => {
+    try {
+      // Thay cổng 8080 bằng cổng backend thực tế của bạn
+      let res = await axios.get("http://localhost:8081/api/doctor-info");
+      if (res && res.data && res.data.EC === 0) {
+        setDoctors(res.data.DT);
+      }
+    } catch (error) {
+      console.log("Lỗi lấy data bác sĩ:", error);
+    }
+  };
+
   return (
     <section className="py-5 bg-light" id="team">
       <div className="container">
@@ -15,44 +35,57 @@ export default function TeamAndTestimonials() {
           <p className="text-muted">Chuyên môn cao – Tận tâm – Thân thiện</p>
         </div>
 
-        {/* ĐỘI NGŨ BÁC SĨ */}
+        {/* ĐỘI NGŨ BÁC SĨ - Render động từ DB */}
         <div className="row g-4 mb-5">
-          <div className="col-md-4 d-flex flex-column align-items-center text-center">
-            <img
-              src={Dr_David_Lee}
-              className="rounded-circle mb-3 shadow"
-              alt="Bác sĩ 1"
-              style={{ width: "120px", height: "120px", objectFit: "cover" }}
-            />
-            <h6 className="fw-bold mb-1">Dr.David Lee</h6>
-            <small className="text-muted">Chuyên khoa Răng – Hàm – Mặt</small>
-          </div>
+          {doctors && doctors.length > 0 ? (
+            // Dùng slice(0, 3) để chỉ lấy 3 bác sĩ đầu tiên cho đẹp đội hình 3 cột
+            doctors.slice(0, 3).map((doctor, index) => {
+              let imageSrc = doctor.avatar
+                ? doctor.avatar
+                : "https://via.placeholder.com/150";
 
-          <div className="col-md-4 d-flex flex-column align-items-center text-center">
-            <img
-              src={Dr_Amanda_Reed}
-              className="rounded-circle mb-3 shadow"
-              alt="Bác sĩ 2"
-              style={{ width: "120px", height: "120px", objectFit: "cover" }}
-            />
-            <h6 className="fw-bold mb-1">Dr.Amanda Reed</h6>
-            <small className="text-muted">Niềng răng – Chỉnh nha</small>
-          </div>
-          <div className="col-md-4 text-center d-flex flex-column align-items-center">
-            <img
-              src={Dr_Emily_Clark}
-              className="rounded-circle mb-3 shadow"
-              alt="Bác sĩ 3"
-              style={{ width: "120px", height: "120px", objectFit: "cover" }}
-            />
-            <h6 className="fw-bold mb-1">Dr.Emily Clark</h6>
-            <small className="text-muted">Cấy ghép Implant</small>
-          </div>
+              return (
+                <div
+                  key={index}
+                  className="col-md-4 d-flex flex-column align-items-center text-center"
+                >
+                  <img
+                    src={imageSrc}
+                    className="rounded-circle mb-3 shadow"
+                    alt={doctor.User ? doctor.User.fullName : "Bác sĩ"}
+                    style={{
+                      width: "120px",
+                      height: "120px",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/150";
+                    }}
+                  />
+                  {/* Lấy tên từ bảng User */}
+                  <h6 className="fw-bold mb-1">
+                    {doctor.User ? doctor.User.fullName : "Bác sĩ"}
+                  </h6>
+                  {/* Lấy chuyên khoa từ bảng Specialty */}
+                  <small className="text-muted">
+                    {doctor.Specialty
+                      ? doctor.Specialty.nameSpecialty
+                      : "Chuyên khoa"}
+                  </small>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center text-muted">
+              Đang tải thông tin đội ngũ bác sĩ...
+            </div>
+          )}
         </div>
 
         <hr className="my-5" />
 
-        {/* CẢM NHẬN KHÁCH HÀNG */}
+        {/* CẢM NHẬN KHÁCH HÀNG (Giữ nguyên phần tĩnh này) */}
         <div className="text-center mb-4">
           <h3 className="fw-bold">Khách Hàng Nói Gì?</h3>
           <p className="text-muted">

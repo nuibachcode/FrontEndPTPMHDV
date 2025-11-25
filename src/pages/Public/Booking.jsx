@@ -6,115 +6,137 @@ import {
   Alert,
   Row,
   Col,
-  ListGroup,
   Container,
-  Badge, // Thêm Badge để dùng cho các nhãn
+  Badge,
+  Spinner,
 } from "react-bootstrap";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import moment from "moment";
+//import "./Booking.css"; // Nếu bạn muốn custom thêm CSS
 
-// Màu chủ đạo
-const PRIMARY_COLOR = "#1e8d9c";
-const SECONDARY_BG = "#e0f7fa"; // Nền phụ
-
-// --- DỮ LIỆU GIẢ ĐỊNH ---
-// (Giữ nguyên dữ liệu mock)
-const mockSpecialties = [
-  { id: 1, name: "Chỉnh Nha" },
-  { id: 2, name: "Nha Tổng Quát" },
-];
-const mockDoctors = [
-  {
-    id: 10,
-    name: "TS.BS Nguyễn Văn A",
-    specialtyId: 1,
-    lever: "Chuyên khoa I",
-  },
-  { id: 11, name: "ThS.BS Lê Thị B", specialtyId: 1, lever: "Chuyên khoa II" },
-  { id: 20, name: "BS. Trần Văn C", specialtyId: 2, lever: "Tổng quát" },
-];
-const mockServices = [
-  { id: 101, name: "Niềng răng kim loại", price: 30000000, specialtyId: 1 },
-  { id: 201, name: "Cạo vôi răng", price: 500000, specialtyId: 2 },
-  { id: 202, name: "Trám răng", price: 800000, specialtyId: 2 },
-];
-const mockSchedules = [
-  { scheduleId: 100, date: new Date(2025, 10, 20), doctorId: 10 },
-  { scheduleId: 101, date: new Date(2025, 10, 21), doctorId: 10 },
-];
-const mockSlots = [
-  {
-    slotId: 1,
-    scheduleId: 100,
-    startTime: "08:00",
-    endTime: "09:00",
-    isBooked: false,
-  },
-  {
-    slotId: 2,
-    scheduleId: 100,
-    startTime: "09:00",
-    endTime: "10:00",
-    isBooked: true,
-  },
-  {
-    slotId: 3,
-    scheduleId: 100,
-    startTime: "10:00",
-    endTime: "11:00",
-    isBooked: false,
-  },
-];
-const formatDateKey = (date) => date.toISOString().split("T")[0];
+// --- CẤU HÌNH MÀU SẮC & STYLE ---
+const PRIMARY_COLOR = "#00b5ad"; // Màu xanh ngọc hiện đại
+const BG_LIGHT = "#f8f9fa";
+const ACTIVE_SERVICE_BG = "#e6fffa";
+const ACTIVE_SERVICE_BORDER = "#00b5ad";
 
 const Booking = () => {
+  const navigate = useNavigate();
+
+  // --- STATE ---
+  const [doctors, setDoctors] = useState([]);
+  const [specialties, setSpecialties] = useState([]);
+  const [services, setServices] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+
   const [bookingData, setBookingData] = useState({
     specialtyId: "",
     doctorId: "",
-    selectedDate: null,
+    selectedDate: new Date(),
     scheduleId: null,
-    slotId: null,
+    timeStart: "",
+    timeEnd: "",
     serviceIds: [],
     totalPrice: 0,
   });
+
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isBooked, setIsBooked] = useState(false); // Logic tính toán giữ nguyên...
+  const [isBooked, setIsBooked] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const filteredDoctors = mockDoctors.filter(
-    (d) => d.specialtyId === parseInt(bookingData.specialtyId)
-  );
-  const availableDates = mockSchedules
-    .filter((s) => s.doctorId === parseInt(bookingData.doctorId))
-    .map((s) => s.date);
-  const slotsForSelectedDate = bookingData.scheduleId
-    ? mockSlots.filter((s) => s.scheduleId === bookingData.scheduleId)
-    : [];
+  // --- INIT DATA ---
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
 
+    if (!storedUser || !token) {
+      const isconfirm = window.confirm("Bạn cần đăng nhập để đặt lịch!");
+      if (isconfirm) {
+        navigate("/account/login");
+      } else {
+        navigate("/");
+      }
+      return;
+    }
+    setUser(storedUser);
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      const [resDoctor, resService, resSpecialty] = await Promise.all([
+        axios.get("http://localhost:8081/api/doctor-info"),
+        axios.get("http://localhost:8081/api/services"),
+        axios.get("http://localhost:8081/api/specialties"),
+      ]);
+
+      if (resDoctor.data.EC === 0) setDoctors(resDoctor.data.DT);
+      if (resService.data.EC === 0) setServices(resService.data.DT);
+
+      if (resSpecialty.data.EC === 0) {
+        // Map data chuyên khoa chuẩn
+        const formatted = resSpecialty.data.DT.map((item) => ({
+          id: item.id,
+          name: item.nameSpecialty,
+        }));
+        setSpecialties(formatted);
+      }
+    } catch (error) {
+      console.log("Error fetching data:", error);
+    }
+  };
+
+  // --- FETCH SCHEDULE ---
+  useEffect(() => {
+    if (bookingData.doctorId && bookingData.selectedDate) {
+      fetchSchedule();
+    }
+  }, [bookingData.doctorId, bookingData.selectedDate]);
+
+  const fetchSchedule = async () => {
+    try {
+      const dateString = moment(bookingData.selectedDate).format("YYYY-MM-DD");
+      const res = await axios.get(
+        `http://localhost:8081/api/schedule-by-date?doctorId=${bookingData.doctorId}&date=${dateString}`
+      );
+      if (res.data.EC === 0) {
+        setSchedules(res.data.DT);
+        // Reset giờ khi đổi ngày
+        setBookingData((prev) => ({
+          ...prev,
+          scheduleId: null,
+          timeStart: "",
+          timeEnd: "",
+        }));
+      }
+    } catch (error) {
+      console.log("Error fetching schedule:", error);
+    }
+  };
+
+  // --- CALCULATE PRICE ---
   useEffect(() => {
     const total = bookingData.serviceIds.reduce((sum, serviceId) => {
-      const service = mockServices.find((s) => s.id === serviceId);
-      return sum + (service ? service.price : 0);
+      const service = services.find((s) => s.id === serviceId);
+      return sum + (service ? Number(service.price) : 0);
     }, 0);
     setBookingData((prev) => ({ ...prev, totalPrice: total }));
-  }, [bookingData.serviceIds]);
+  }, [bookingData.serviceIds, services]);
 
-  useEffect(() => {
-    if (bookingData.selectedDate && bookingData.doctorId) {
-      const schedule = mockSchedules.find(
-        (s) =>
-          s.doctorId === parseInt(bookingData.doctorId) &&
-          formatDateKey(s.date) === formatDateKey(bookingData.selectedDate)
-      );
-      setBookingData((prev) => ({
-        ...prev,
-        scheduleId: schedule ? schedule.scheduleId : null,
-        slotId: null,
-      }));
-    }
-  }, [bookingData.selectedDate, bookingData.doctorId]);
+  // --- HANDLERS ---
 
-  const handleServiceChange = (id) => {
+  // LOGIC SỬA LỖI LỌC BÁC SĨ:
+  // So sánh trực tiếp specialtyId của bác sĩ với specialtyId đang chọn
+  const filteredDoctors = doctors.filter((d) => {
+    if (!bookingData.specialtyId) return false;
+    // Dùng toán tử == để so sánh lỏng (string vs number) cho an toàn
+    return d.specialtyId == bookingData.specialtyId;
+  });
+
+  const handleServiceToggle = (id) => {
     const serviceId = parseInt(id);
     setBookingData((prev) => {
       const isSelected = prev.serviceIds.includes(serviceId);
@@ -125,283 +147,388 @@ const Booking = () => {
     });
   };
 
+  const handleSlotClick = (schedule) => {
+    setBookingData((prev) => ({
+      ...prev,
+      scheduleId: schedule.id,
+      timeStart: schedule.timeStart,
+      timeEnd: schedule.timeEnd,
+    }));
+  };
+
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
-    if (!bookingData.slotId || bookingData.serviceIds.length === 0) {
-      alert("Vui lòng chọn dịch vụ và khung giờ!");
+    if (!bookingData.scheduleId || bookingData.serviceIds.length === 0) {
+      alert("Vui lòng chọn Dịch vụ và Giờ khám!");
       return;
     }
     setIsProcessing(true);
 
-    const payload = {
-      ...bookingData,
-      dateBooking: formatDateKey(bookingData.selectedDate),
-    };
-    console.log("Final Booking Payload:", payload);
+    try {
+      const token = localStorage.getItem("token");
+      const payload = {
+        patientId: user.id,
+        doctorId: bookingData.doctorId,
+        scheduleId: bookingData.scheduleId,
+        dateBooking: moment(bookingData.selectedDate).format("YYYY-MM-DD"),
+        timeStart: bookingData.timeStart,
+        timeEnd: bookingData.timeEnd,
+        services: bookingData.serviceIds,
+        description: `Đặt khám qua Web - Chuyên khoa ${
+          specialties.find((s) => s.id == bookingData.specialtyId)?.name
+        }`,
+      };
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+      const res = await axios.post(
+        "http://localhost:8081/api/bookings",
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    setIsBooked(true);
+      if (res.data.EC === 0) {
+        setIsBooked(true);
+      } else {
+        alert(res.data.EM);
+      }
+    } catch (error) {
+      console.log("Error booking:", error);
+      alert("Lỗi hệ thống, vui lòng thử lại sau.");
+    }
     setIsProcessing(false);
   };
 
+  // --- RENDER SUCCESS ---
   if (isBooked) {
     return (
-      <Alert variant="success" className="text-center p-5">
-                <h4 className="alert-heading">🎉 Đặt Lịch Thành Công!</h4>     
-          <p>Mã Booking: **#BK{Math.floor(Math.random() * 100000)}**</p>
-                <hr />       {" "}
-        <Button variant="primary" as={Link} to="/patient/history">
-                    Xem Lịch Sử Đặt Lịch        {" "}
-        </Button>
-             {" "}
-      </Alert>
+      <Container
+        className="d-flex align-items-center justify-content-center"
+        style={{ minHeight: "80vh", marginTop: "50px" }}
+      >
+        <Card
+          className="text-center p-5 shadow-lg border-0 rounded-5"
+          style={{ maxWidth: "600px" }}
+        >
+          <div className="mb-4 text-success display-1">
+            <i className="fas fa-check-circle"></i>
+          </div>
+          <h2 className="fw-bold mb-3">Đặt Lịch Thành Công!</h2>
+          <p className="text-muted mb-4">
+            Cảm ơn <strong>{user?.fullName}</strong>. Chúng tôi đã ghi nhận lịch
+            hẹn của bạn. Vui lòng đến đúng giờ để được phục vụ tốt nhất.
+          </p>
+          <div className="d-grid gap-2 col-8 mx-auto">
+            <Button variant="outline-primary" as={Link} to="/patient/history">
+              Xem lịch sử đặt lịch
+            </Button>
+            <Button
+              variant="link"
+              as={Link}
+              to="/"
+              className="text-decoration-none"
+            >
+              Về trang chủ
+            </Button>
+          </div>
+        </Card>
+      </Container>
     );
   }
 
+  // --- RENDER FORM ---
   return (
-    <Container className="my-5 pt-5">
-           {" "}
-      <h2
-        className="text-center mb-5 fw-bolder"
-        style={{ color: PRIMARY_COLOR }}
-      >
-                ĐẶT LỊCH HẸN      {" "}
-      </h2>
-           {" "}
-      <Card className="shadow-lg border-0">
-        <Card.Header className="bg-light p-3">
-          <Alert variant="info" className="mb-0 small">
-            Vui lòng chọn đầy đủ các thông tin để tìm khung giờ khám phù hợp
-            nhất.
-          </Alert>
-        </Card.Header>
-               {" "}
+    <div
+      style={{
+        backgroundColor: "#f0f2f5",
+        minHeight: "100vh",
+        paddingTop: "100px",
+        paddingBottom: "50px",
+      }}
+    >
+      <Container style={{ maxWidth: "1400px" }}>
+        <div className="text-center mb-5">
+          <h2 className="fw-bold text-uppercase" style={{ color: "#333" }}>
+            Đăng Ký Khám Bệnh
+          </h2>
+          <p className="text-muted">
+            Điền thông tin và chọn lịch phù hợp với bạn
+          </p>
+        </div>
+
         <Form onSubmit={handleBookingSubmit}>
-                   {" "}
-          <Row>
-                        {/* Cột Trái: Dịch vụ, Bác sĩ */}           {" "}
-            <Col md={20} className="p-4 border-end">
-                           {" "}
-              <h5 className="mb-3 fw-bold" style={{ color: PRIMARY_COLOR }}>
-                                1. Chọn Dịch vụ & Bác sĩ              {" "}
-              </h5>
-              <Card
-                className="shadow-sm p-3 mb-4"
-                style={{ backgroundColor: SECONDARY_BG }}
-              >
-                {/* Chọn Chuyên khoa */}
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-bold">Chuyên khoa</Form.Label>
-                  <Form.Select
-                    value={bookingData.specialtyId}
-                    onChange={(e) =>
-                      setBookingData({
-                        ...bookingData,
-                        specialtyId: e.target.value,
-                        doctorId: "",
-                      })
-                    }
-                    required
-                  >
-                    <option value="">-- Chọn Chuyên khoa --</option>
-                    {mockSpecialties.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-
-                {/* Chọn Bác sĩ */}
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-bold">Bác sĩ</Form.Label>
-                  <Form.Select
-                    value={bookingData.doctorId}
-                    onChange={(e) =>
-                      setBookingData({
-                        ...bookingData,
-                        doctorId: e.target.value,
-                        selectedDate: null,
-                      })
-                    }
-                    required
-                    disabled={!bookingData.specialtyId}
-                  >
-                    <option value="">-- Chọn Bác sĩ --</option>
-                    {filteredDoctors.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name} ({d.lever})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-
-                {/* Chọn Dịch vụ */}
-                <Form.Group>
-                  <Form.Label className="fw-bold">Dịch vụ</Form.Label>
-                  <Card className="p-3">
-                    {mockServices
-                      .filter(
-                        (s) =>
-                          s.specialtyId === parseInt(bookingData.specialtyId)
-                      )
-                      .map((service) => (
-                        <Form.Check
-                          key={service.id}
-                          type="checkbox"
-                          id={`service-${service.id}`}
-                          label={`${
-                            service.name
-                          } (${service.price.toLocaleString("vi-VN")} VNĐ)`}
-                          checked={bookingData.serviceIds.includes(service.id)}
-                          onChange={() => handleServiceChange(service.id)}
-                        />
-                      ))}
-                    {bookingData.specialtyId &&
-                      mockServices.filter(
-                        (s) =>
-                          s.specialtyId === parseInt(bookingData.specialtyId)
-                      ).length === 0 && (
-                        <p className="text-danger small mb-0">
-                          Chuyên khoa này chưa có dịch vụ nào.
-                        </p>
-                      )}
-                  </Card>
-                </Form.Group>
-              </Card>
-                         {" "}
-            </Col>
-                        {/* Cột Phải: Ngày, Giờ, Tóm tắt */}           {" "}
-            <Col md={20} className="p-4">
-                           {" "}
-              <h5 className="mb-3 fw-bold" style={{ color: PRIMARY_COLOR }}>
-                                2. Chọn Thời gian & Xác nhận              {" "}
-              </h5>
-              {/* Chọn Ngày */}
-              <Card className="shadow-sm p-3 mb-4">
-                <Form.Label className="fw-bold">Chọn Ngày</Form.Label>
-                <div className="d-flex justify-content-center">
-                  <DatePicker
-                    selected={bookingData.selectedDate}
-                    onChange={(date) =>
-                      setBookingData({ ...bookingData, selectedDate: date })
-                    }
-                    includeDates={availableDates}
-                    dateFormat="dd/MM/yyyy"
-                    placeholderText="Chọn ngày có lịch"
-                    className="form-control"
-                    disabled={!bookingData.doctorId}
-                    inline
-                  />
-                </div>
-              </Card>
-              {/* Chọn Giờ (Slot) */}
-              <Form.Group className="mb-4">
-                <Form.Label className="fw-bold">
-                  Chọn Khung giờ{" "}
-                  <Badge bg="success" className="ms-2">
-                    Trống
-                  </Badge>
-                </Form.Label>
-                <div className="d-flex flex-wrap gap-2">
-                  {slotsForSelectedDate.map((slot) => (
-                    <Button
-                      key={slot.slotId}
-                      variant={
-                        slot.isBooked
-                          ? "outline-danger" // Slot đã đặt
-                          : bookingData.slotId === slot.slotId
-                          ? "success" // Slot đang chọn
-                          : "outline-primary" // Slot trống
-                      }
-                      onClick={() =>
-                        setBookingData((prev) => ({
-                          ...prev,
-                          slotId: slot.slotId,
-                        }))
-                      }
-                      size="sm"
-                      disabled={slot.isBooked || !bookingData.scheduleId}
-                      style={{ transition: "0.2s", minWidth: "80px" }}
+          <Row className="g-4">
+            {/* --- CỘT TRÁI: THÔNG TIN KHÁM --- */}
+            <Col lg={20}>
+              <Card className="border-0 shadow-sm rounded-4 h-100">
+                <Card.Body className="p-4">
+                  <h5 className="fw-bold mb-4 d-flex align-items-center">
+                    <span
+                      className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+                      style={{ width: 30, height: 30, fontSize: 14 }}
                     >
-                      {slot.startTime}
-                    </Button>
-                  ))}
-                  {bookingData.scheduleId &&
-                    slotsForSelectedDate.length === 0 && (
-                      <Alert variant="secondary" className="w-100 py-2">
-                        Ngày đã chọn chưa có khung giờ trống!
+                      1
+                    </span>
+                    Thông Tin Chuyên Khoa
+                  </h5>
+
+                  {/* 1. Chọn Chuyên khoa */}
+                  <Form.Group className="mb-4">
+                    <Form.Label className="fw-semibold text-muted">
+                      Chuyên khoa
+                    </Form.Label>
+                    <Form.Select
+                      size="lg"
+                      value={bookingData.specialtyId}
+                      onChange={(e) =>
+                        setBookingData({
+                          ...bookingData,
+                          specialtyId: e.target.value,
+                          doctorId: "",
+                          scheduleId: null,
+                        })
+                      }
+                      className="border-0 bg-light fw-bold text-primary"
+                      required
+                    >
+                      <option value="">-- Chọn Chuyên khoa --</option>
+                      {specialties.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+
+                  {/* 2. Chọn Bác sĩ */}
+                  <Form.Group className="mb-4">
+                    <Form.Label className="fw-semibold text-muted">
+                      Bác sĩ phụ trách
+                    </Form.Label>
+                    <Form.Select
+                      size="lg"
+                      value={bookingData.doctorId}
+                      onChange={(e) =>
+                        setBookingData({
+                          ...bookingData,
+                          doctorId: e.target.value,
+                          scheduleId: null,
+                        })
+                      }
+                      disabled={!bookingData.specialtyId}
+                      className="border-0 bg-light fw-bold text-dark"
+                      required
+                    >
+                      <option value="">-- Chọn Bác sĩ --</option>
+                      {filteredDoctors.map((d) => (
+                        <option key={d.id} value={d.doctorId}>
+                          {d.User ? d.User.fullName : "Bác sĩ"} ({d.lever})
+                        </option>
+                      ))}
+                    </Form.Select>
+                    {bookingData.specialtyId &&
+                      filteredDoctors.length === 0 && (
+                        <div className="text-danger mt-2 small">
+                          <i className="fas fa-exclamation-circle me-1"></i>Chưa
+                          có bác sĩ nào thuộc khoa này.
+                        </div>
+                      )}
+                  </Form.Group>
+
+                  {/* 3. Chọn Dịch vụ (Dạng Card) */}
+                  <Form.Group>
+                    <Form.Label className="fw-semibold text-muted mb-3">
+                      Dịch vụ mong muốn
+                    </Form.Label>
+
+                    {!bookingData.specialtyId ? (
+                      <Alert variant="warning" className="small border-0">
+                        <i className="fas fa-arrow-up me-2"></i>Vui lòng chọn
+                        chuyên khoa trước
                       </Alert>
+                    ) : (
+                      <div
+                        style={{
+                          maxHeight: "400px",
+                          overflowY: "auto",
+                          paddingRight: "5px",
+                        }}
+                      >
+                        {services
+                          .filter(
+                            (s) => s.specialtyId == bookingData.specialtyId
+                          )
+                          .map((service) => {
+                            const isSelected = bookingData.serviceIds.includes(
+                              service.id
+                            );
+                            return (
+                              <div
+                                key={service.id}
+                                onClick={() => handleServiceToggle(service.id)}
+                                className="d-flex justify-content-between align-items-center p-3 mb-3 rounded-3 transition-all"
+                                style={{
+                                  backgroundColor: isSelected
+                                    ? ACTIVE_SERVICE_BG
+                                    : "#fff",
+                                  border: `1px solid ${
+                                    isSelected ? ACTIVE_SERVICE_BORDER : "#eee"
+                                  }`,
+                                  cursor: "pointer",
+                                  transition: "all 0.2s",
+                                }}
+                              >
+                                <div>
+                                  <div
+                                    className={`fw-bold ${
+                                      isSelected ? "text-primary" : "text-dark"
+                                    }`}
+                                  >
+                                    {service.nameService}
+                                  </div>
+                                  <small className="text-muted">
+                                    {service.duration}
+                                  </small>
+                                </div>
+                                <div className="text-end">
+                                  <Badge
+                                    bg={isSelected ? "primary" : "light"}
+                                    text={isSelected ? "light" : "dark"}
+                                    className="py-2 px-3 rounded-pill"
+                                  >
+                                    {service.price.toLocaleString("vi-VN")} đ
+                                  </Badge>
+                                  {isSelected && (
+                                    <div className="text-primary small mt-1">
+                                      <i className="fas fa-check-circle"></i>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        {services.filter(
+                          (s) => s.specialtyId == bookingData.specialtyId
+                        ).length === 0 && (
+                          <p className="text-muted text-center py-3">
+                            Chưa có dịch vụ cho khoa này.
+                          </p>
+                        )}
+                      </div>
                     )}
-                </div>
-              </Form.Group>
-              {/* Tóm tắt & Thanh toán */}
-              <Card
-                className="shadow-lg border-warning"
-                style={{ borderLeft: "5px solid" }}
-              >
-                <Card.Header className="bg-light fw-bold">
-                  Tóm tắt Lịch hẹn
-                </Card.Header>
-                <ListGroup variant="flush">
-                  <ListGroup.Item>
-                    Tổng chi phí:{" "}
-                    <strong className="float-end text-danger">
-                      {bookingData.totalPrice.toLocaleString("vi-VN")} VNĐ
-                    </strong>
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    Ngày khám:{" "}
-                    <span className="float-end">
-                      {bookingData.selectedDate
-                        ? formatDateKey(bookingData.selectedDate)
-                        : "..."}
-                    </span>
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    Giờ khám:{" "}
-                    <span className="float-end text-success fw-bold">
-                      {mockSlots.find((s) => s.slotId === bookingData.slotId)
-                        ?.startTime || "Vui lòng chọn giờ"}
-                    </span>
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    Thanh toán:{" "}
-                    <span className="float-end">Tại phòng khám (COD)</span>
-                  </ListGroup.Item>
-                </ListGroup>
+                  </Form.Group>
+                </Card.Body>
               </Card>
-                         {" "}
             </Col>
-                     {" "}
+
+            {/* --- CỘT PHẢI: NGÀY GIỜ & THANH TOÁN --- */}
+            <Col lg={20}>
+              <div className="sticky-top" style={{ top: "100px", zIndex: 1 }}>
+                {/* 1. Chọn Ngày */}
+                <Card className="border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                  <div className="bg-primary p-3 text-white text-center">
+                    <h6 className="m-0 fw-bold text-uppercase">
+                      Chọn Ngày Khám
+                    </h6>
+                  </div>
+                  <Card.Body className="p-4 d-flex justify-content-center bg-white">
+                    <DatePicker
+                      selected={bookingData.selectedDate}
+                      onChange={(date) =>
+                        setBookingData({ ...bookingData, selectedDate: date })
+                      }
+                      minDate={new Date()}
+                      inline // Hiển thị lịch luôn ra ngoài
+                      disabled={!bookingData.doctorId}
+                    />
+                  </Card.Body>
+                </Card>
+
+                {/* 2. Chọn Giờ */}
+                <Card className="border-0 shadow-sm rounded-4 mb-4">
+                  <Card.Body className="p-4">
+                    <h6 className="fw-bold mb-3 text-muted">Khung giờ trống</h6>
+                    {bookingData.doctorId ? (
+                      <div className="d-flex flex-wrap gap-2">
+                        {schedules.length > 0 ? (
+                          schedules.map((schedule) => (
+                            <Button
+                              key={schedule.id}
+                              variant={
+                                bookingData.scheduleId === schedule.id
+                                  ? "primary"
+                                  : "outline-secondary"
+                              }
+                              className="rounded-pill py-2 px-3 fw-semibold"
+                              onClick={() => handleSlotClick(schedule)}
+                              style={{ fontSize: "0.9rem" }}
+                            >
+                              {schedule.timeStart}
+                            </Button>
+                          ))
+                        ) : (
+                          <Alert
+                            variant="secondary"
+                            className="w-100 text-center border-0 small py-3 m-0"
+                          >
+                            Bác sĩ không có lịch vào ngày này.
+                          </Alert>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="small text-muted fst-italic">
+                        Vui lòng chọn bác sĩ để xem lịch.
+                      </p>
+                    )}
+                  </Card.Body>
+                </Card>
+
+                {/* 3. Tổng kết & Nút bấm */}
+                <Card className="border-0 shadow rounded-4 bg-white">
+                  <Card.Body className="p-4">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <span className="text-muted">Tổng chi phí dự kiến</span>
+                      <span className="fs-4 fw-bold text-danger">
+                        {bookingData.totalPrice.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
+                    <div className="d-flex justify-content-between align-items-center mb-4 small text-muted">
+                      <span>
+                        <i className="far fa-calendar-alt me-2"></i>
+                        {moment(bookingData.selectedDate).format("DD/MM/YYYY")}
+                      </span>
+                      <span>
+                        <i className="far fa-clock me-2"></i>
+                        {bookingData.timeStart || "--:--"}
+                      </span>
+                    </div>
+
+                    <Button
+                      onClick={handleBookingSubmit}
+                      disabled={
+                        isProcessing ||
+                        !bookingData.scheduleId ||
+                        bookingData.serviceIds.length === 0
+                      }
+                      variant="warning"
+                      size="lg"
+                      className="w-100 text-white fw-bold py-3 rounded-3 shadow-sm text-uppercase"
+                      style={{ background: "#ffc107", border: "none" }}
+                    >
+                      {isProcessing ? (
+                        <Spinner animation="border" size="sm" />
+                      ) : (
+                        "Xác nhận đặt lịch"
+                      )}
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </div>
+            </Col>
           </Row>
-                   {" "}
-          <div className="text-center mt-5 p-3 border-top">
-                       {" "}
-            <Button
-              variant="warning"
-              type="submit"
-              size="lg"
-              style={{ padding: "10px 40px", fontSize: "1.2rem" }}
-              disabled={
-                isProcessing ||
-                bookingData.slotId === null ||
-                bookingData.serviceIds.length === 0
-              }
-            >
-                           {" "}
-              {isProcessing ? "Đang tạo Booking..." : "Xác nhận Đặt lịch"}     
-                   {" "}
-            </Button>
-                     {" "}
-          </div>
-                 {" "}
         </Form>
-             {" "}
-      </Card>
-         {" "}
-    </Container>
+      </Container>
+    </div>
   );
 };
 

@@ -86,10 +86,9 @@ select {
   margin-top: 5px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  box-sizing: border-box; /* Quan trọng để padding không làm tăng chiều rộng */
+  box-sizing: border-box;
 }
 
-/* Footer */
 footer {
   text-align: center;
   padding: 20px;
@@ -97,6 +96,3 @@ footer {
   color: white;
   margin-top: 40px;
 }
-
-/* Import CSS của React Datepicker */
-/* Đây là bước quan trọng để DatePicker hiển thị đúng */

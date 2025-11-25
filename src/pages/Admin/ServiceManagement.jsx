@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Card,
@@ -8,186 +8,290 @@ import {
   Modal,
   Row,
   Col,
+  Badge,
+  Spinner,
 } from "react-bootstrap";
-
-// Giả định dữ liệu từ API
-const mockSpecialties = [
-  { id: 1, name: "Chỉnh Nha" },
-  { id: 2, name: "Nha Tổng Quát" },
-];
-
-const mockServices = [
-  {
-    id: 101,
-    name: "Cạo vôi răng",
-    price: 500000,
-    duration: 30,
-    specialtyId: 2,
-  },
-  {
-    id: 102,
-    name: "Trám răng thẩm mỹ",
-    price: 800000,
-    duration: 45,
-    specialtyId: 2,
-  },
-  {
-    id: 103,
-    name: "Niềng răng kim loại",
-    price: 30000000,
-    duration: 180,
-    specialtyId: 1,
-  },
-];
+import axios from "axios";
 
 const ServiceManagement = () => {
-  const [services, setServices] = useState(mockServices);
+  const [services, setServices] = useState([]);
+  const [specialties, setSpecialties] = useState([]); // Danh sách chuyên khoa
+  const [isLoading, setIsLoading] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
   const [currentService, setCurrentService] = useState({
     id: null,
-    name: "",
+    nameService: "", // Chú ý tên trường khớp với Backend
     price: "",
     duration: "",
+    description: "",
     specialtyId: "",
   });
+
+  useEffect(() => {
+    fetchServices();
+    fetchSpecialties();
+  }, []);
+
+  // 1. Lấy danh sách Dịch vụ
+  const fetchServices = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get("http://localhost:8081/api/services");
+      if (res.data.EC === 0) {
+        setServices(res.data.DT);
+      }
+    } catch (error) {
+      console.log("Lỗi lấy dịch vụ:", error);
+    }
+    setIsLoading(false);
+  };
+
+  // 2. Lấy danh sách Chuyên khoa
+  const fetchSpecialties = async () => {
+    try {
+      const res = await axios.get("http://localhost:8081/api/specialties");
+      if (res.data.EC === 0) {
+        setSpecialties(res.data.DT);
+      }
+    } catch (error) {
+      console.log("Lỗi lấy chuyên khoa:", error);
+    }
+  };
 
   const handleClose = () => {
     setShowModal(false);
     setCurrentService({
       id: null,
-      name: "",
+      nameService: "",
       price: "",
       duration: "",
+      description: "",
       specialtyId: "",
     });
   };
 
-  const handleShow = (
-    service = { id: null, name: "", price: "", duration: "", specialtyId: "" }
-  ) => {
-    setCurrentService(service);
+  const handleShow = (service = null) => {
+    if (service) {
+      // Chế độ Sửa
+      setCurrentService({
+        id: service.id,
+        nameService: service.nameService,
+        price: service.price,
+        duration: service.duration,
+        description: service.description,
+        specialtyId: service.specialtyId,
+      });
+    } else {
+      // Chế độ Thêm mới (Reset form)
+      setCurrentService({
+        id: null,
+        nameService: "",
+        price: "",
+        duration: "",
+        description: "",
+        specialtyId: "",
+      });
+    }
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  // 3. Xử lý Submit (Thêm / Sửa)
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Logic gọi API CREATE hoặc UPDATE bảng Service
+    const token = localStorage.getItem("token");
 
-    if (currentService.id) {
-      // UPDATE
-      setServices(
-        services.map((s) => (s.id === currentService.id ? currentService : s))
-      );
-      alert("Cập nhật dịch vụ thành công!");
-    } else {
-      // CREATE
-      const newId = services.length + 100;
-      setServices([
-        ...services,
+    try {
+      let res;
+      const payload = {
+        nameService: currentService.nameService,
+        price: currentService.price,
+        duration: currentService.duration,
+        description: currentService.description,
+        specialtyId: currentService.specialtyId,
+      };
+
+      if (currentService.id) {
+        // UPDATE
+        res = await axios.put(
+          `http://localhost:8081/api/services/${currentService.id}`,
+          payload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      } else {
+        // CREATE
+        res = await axios.post("http://localhost:8081/api/services", payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
+      if (res.data.EC === 0) {
+        alert(
+          currentService.id ? "Cập nhật thành công!" : "Thêm mới thành công!"
+        );
+        fetchServices(); // Reload danh sách
+        handleClose();
+      } else {
+        alert(res.data.EM);
+      }
+    } catch (error) {
+      alert("Lỗi hệ thống");
+    }
+  };
+
+  // 4. Xử lý Xóa
+  const handleDelete = async (id) => {
+    if (!window.confirm("Xác nhận xóa dịch vụ này?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.delete(
+        `http://localhost:8081/api/services/${id}`,
         {
-          ...currentService,
-          id: newId,
-          price: parseFloat(currentService.price),
-          duration: parseInt(currentService.duration),
-        },
-      ]);
-      alert("Thêm dịch vụ mới thành công!");
-    }
-    handleClose();
-  };
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-  const handleDelete = (id) => {
-    if (window.confirm("Xác nhận xóa dịch vụ này?")) {
-      // Logic gọi API DELETE Service
-      setServices(services.filter((s) => s.id !== id));
-      alert("Xóa dịch vụ thành công!");
+      if (res.data.EC === 0) {
+        alert("Xóa thành công!");
+        fetchServices();
+      } else {
+        alert(res.data.EM);
+      }
+    } catch (error) {
+      alert("Lỗi khi xóa");
     }
-  };
-
-  const getSpecialtyName = (id) => {
-    const specialty = mockSpecialties.find((s) => s.id === id);
-    return specialty ? specialty.name : "Chưa gán";
   };
 
   return (
-    <Container fluid>
-      <h2 className="text-primary fw-bold mb-4">Quản lý Dịch vụ</h2>
-
-      <div className="d-flex justify-content-end mb-3">
+    <Container fluid className="py-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h3 className="text-primary fw-bold m-0">
+          <i className="bi bi-hdd-stack-fill me-2"></i>Quản lý Dịch vụ Khám
+        </h3>
         <Button variant="success" onClick={() => handleShow()}>
-          + Thêm Dịch vụ mới
+          <i className="bi bi-plus-circle me-2"></i> Thêm Dịch vụ mới
         </Button>
       </div>
 
       <Card className="shadow-sm border-0">
-        <Card.Body>
-          <Table striped hover responsive>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Tên Dịch vụ</th>
-                <th>Chuyên khoa</th>
-                <th>Giá (VNĐ)</th>
-                <th>Thời lượng (phút)</th>
-                <th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((service) => (
-                <tr key={service.id}>
-                  <td>{service.id}</td>
-                  <td>{service.name}</td>
-                  <td>{getSpecialtyName(service.specialtyId)}</td>
-                  <td>{service.price.toLocaleString("vi-VN")}</td>
-                  <td>{service.duration}</td>
-                  <td>
-                    <Button
-                      variant="info"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => handleShow(service)}
-                    >
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(service.id)}
-                    >
-                      Xóa
-                    </Button>
-                  </td>
+        <Card.Body className="p-0">
+          {isLoading ? (
+            <div className="text-center p-5">
+              <Spinner animation="border" />
+            </div>
+          ) : (
+            <Table hover responsive className="align-middle m-0">
+              <thead className="bg-light">
+                <tr>
+                  <th className="ps-4">ID</th>
+                  <th>Tên Dịch vụ</th>
+                  <th>Chuyên khoa</th>
+                  <th>Giá (VNĐ)</th>
+                  <th>Thời lượng</th>
+                  <th>Mô tả</th>
+                  <th className="text-center">Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {services.length > 0 ? (
+                  services.map((service) => (
+                    <tr key={service.id}>
+                      <td className="ps-4">#{service.id}</td>
+                      <td className="fw-bold text-primary">
+                        {service.nameService}
+                      </td>
+                      <td>
+                        {service.Specialty ? (
+                          <Badge bg="info" text="dark">
+                            {service.Specialty.nameSpecialty}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted small">Chưa gán</span>
+                        )}
+                      </td>
+                      <td className="fw-bold text-success">
+                        {Number(service.price).toLocaleString("vi-VN")} đ
+                      </td>
+                      <td>{service.duration} phút</td>
+                      <td>
+                        <span
+                          className="d-inline-block text-truncate"
+                          style={{ maxWidth: "150px" }}
+                          title={service.description}
+                        >
+                          {service.description}
+                        </span>
+                      </td>
+                      <td className="text-center">
+                        <Button
+                          variant="light"
+                          size="sm"
+                          className="me-2 text-primary border-primary"
+                          onClick={() => handleShow(service)}
+                        >
+                          <i className="bi bi-pencil-square"></i>
+                        </Button>
+                        <Button
+                          variant="light"
+                          size="sm"
+                          className="text-danger border-danger"
+                          onClick={() => handleDelete(service.id)}
+                        >
+                          <i className="bi bi-trash"></i>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="text-center py-4">
+                      Chưa có dữ liệu
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          )}
         </Card.Body>
       </Card>
 
       {/* Modal Sửa/Thêm */}
-      <Modal show={showModal} onHide={handleClose}>
+      <Modal show={showModal} onHide={handleClose} size="lg" centered>
         <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title>
+          <Modal.Title className="fw-bold">
             {currentService.id ? "Cập nhật Dịch vụ" : "Thêm Dịch vụ mới"}
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Tên Dịch vụ</Form.Label>
-              <Form.Control
-                type="text"
-                value={currentService.name}
-                onChange={(e) =>
-                  setCurrentService({ ...currentService, name: e.target.value })
-                }
-                required
-              />
-            </Form.Group>
-            <Row>
+          <Modal.Body className="p-4">
+            <Row className="g-3">
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold">
+                    Tên Dịch vụ <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={currentService.nameService}
+                    onChange={(e) =>
+                      setCurrentService({
+                        ...currentService,
+                        nameService: e.target.value,
+                      })
+                    }
+                    required
+                    placeholder="VD: Cạo vôi răng"
+                  />
+                </Form.Group>
+              </Col>
               <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Giá (VNĐ)</Form.Label>
+                <Form.Group>
+                  <Form.Label className="fw-semibold">
+                    Giá (VNĐ) <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control
                     type="number"
                     value={currentService.price}
@@ -203,8 +307,10 @@ const ServiceManagement = () => {
                 </Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Thời lượng (phút)</Form.Label>
+                <Form.Group>
+                  <Form.Label className="fw-semibold">
+                    Thời lượng (phút) <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control
                     type="number"
                     value={currentService.duration}
@@ -216,37 +322,60 @@ const ServiceManagement = () => {
                     }
                     required
                     min="15"
+                    step="15"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold">
+                    Chuyên khoa <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Select
+                    value={currentService.specialtyId}
+                    onChange={(e) =>
+                      setCurrentService({
+                        ...currentService,
+                        specialtyId: e.target.value,
+                      })
+                    }
+                    required
+                  >
+                    <option value="">--- Chọn Chuyên khoa ---</option>
+                    {specialties.map((spec) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.nameSpecialty}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold">
+                    Mô tả chi tiết
+                  </Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={currentService.description}
+                    onChange={(e) =>
+                      setCurrentService({
+                        ...currentService,
+                        description: e.target.value,
+                      })
+                    }
                   />
                 </Form.Group>
               </Col>
             </Row>
-            <Form.Group className="mb-3">
-              <Form.Label>Gán vào Chuyên khoa</Form.Label>
-              <Form.Select
-                value={currentService.specialtyId}
-                onChange={(e) =>
-                  setCurrentService({
-                    ...currentService,
-                    specialtyId: parseInt(e.target.value),
-                  })
-                }
-                required
-              >
-                <option value="">--- Chọn Chuyên khoa ---</option>
-                {mockSpecialties.map((spec) => (
-                  <option key={spec.id} value={spec.id}>
-                    {spec.name}
-                  </option>
-                ))}
-              </Form.Select>
-            </Form.Group>
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={handleClose}>
-              Hủy
+              Hủy bỏ
             </Button>
-            <Button variant="primary" type="submit">
-              Lưu
+            <Button variant="primary" type="submit" className="fw-bold">
+              {currentService.id ? "Lưu Thay Đổi" : "Tạo Mới"}
             </Button>
           </Modal.Footer>
         </Form>
