@@ -10,7 +10,7 @@ export const DoctorRoutes = [
     path: "/doctor",
     element: DoctorDashboard,
     layout: DoctorLayout,
-    isPrivate: true,
+    isPrivate: false,
     roles: [1, 2],
   },
 
@@ -18,21 +18,21 @@ export const DoctorRoutes = [
     path: "/doctor/schedule",
     element: ScheduleManagement,
     layout: DoctorLayout,
-    isPrivate: true,
+    isPrivate: false,
     roles: [2],
   },
   {
     path: "/doctor/profile",
     element: Profile,
     layout: DoctorLayout,
-    isPrivate: true,
+    isPrivate: false,
     roles: [2],
   },
   {
     path: "/doctor/patient-records",
     element: PatientRecordsPage,
     layout: DoctorLayout,
-    isPrivate: true,
+    isPrivate: false,
     roles: [2],
   },
 ];

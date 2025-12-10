@@ -8,7 +8,7 @@ const AdminDashboardPage = () => {
   // State lưu dữ liệu thật
   const [stats, setStats] = useState({
     todayRevenue: 0,
-    todayOrders: 0, // Nếu API có trả về (hoặc bạn tự tính)
+    todayOrders: 0,
     monthRevenue: 0,
     monthOrders: 0,
     monthTarget: 500000000, // Target cứng
@@ -26,28 +26,32 @@ const AdminDashboardPage = () => {
       const token = localStorage.getItem("token");
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      // Gọi song song 2 API
+      // Gọi API qua Gateway (Port 8080)
       const [resStats, resRecent] = await Promise.all([
-        axios.get("http://localhost:8081/api/admin/stats", config),
-        axios.get("http://localhost:8081/api/admin/payments/recent", config),
+        axios.get("http://localhost:8080/api/admin/stats", config),
+        axios.get("http://localhost:8080/api/admin/payments/recent", config),
       ]);
 
       if (resStats.data.EC === 0) {
         const data = resStats.data.DT;
         setStats((prev) => ({
           ...prev,
-          todayRevenue: Number(data.revenueToday),
-          monthRevenue: Number(data.revenueMonth),
-          monthOrders: Number(data.totalOrders),
-          countDoctors: Number(data.totalDoctors),
+          todayRevenue: Number(data.revenueToday || 0),
+          monthRevenue: Number(data.revenueMonth || 0),
+          monthOrders: Number(data.totalOrders || 0),
+          countDoctors: Number(data.totalDoctors || 0),
         }));
       }
 
       if (resRecent.data.EC === 0) {
-        setRecentPayments(resRecent.data.DT);
+        setRecentPayments(resRecent.data.DT || []);
       }
     } catch (error) {
       console.log("Lỗi lấy dashboard:", error);
+      // Fallback: Nếu Gateway lỗi thì thử gọi trực tiếp (chỉ để debug)
+      if (error.response && error.response.status === 404) {
+          console.warn("Gateway chưa route được, hãy kiểm tra config Gateway.");
+      }
     }
     setIsLoading(false);
   };
@@ -167,23 +171,24 @@ const AdminDashboardPage = () => {
                     {formatCurrency(item.amount)}
                   </td>
                   <td className="text-center">
-                    <Badge bg={item.method === "cash" ? "success" : "primary"}>
-                      {item.method === "cash" ? "Tiền mặt" : "Chuyển khoản"}
+                    <Badge bg={item.method === "TIEN_MAT" ? "success" : "primary"}>
+                      {item.method === "TIEN_MAT" ? "Tiền mặt" : "Chuyển khoản"}
                     </Badge>
                   </td>
                   <td className="text-center">
+                    {/* --- ĐÃ SỬA CHỖ NÀY: SO SÁNH CHỮ HOA ĐỂ KHỚP VỚI DATABASE --- */}
                     <Badge
-                      bg={item.status === "success" ? "success" : "warning"}
-                      text={item.status === "success" ? "white" : "dark"}
+                      bg={(item.status || "").toUpperCase() === "SUCCESS" ? "success" : "warning"}
+                      text={(item.status || "").toUpperCase() === "SUCCESS" ? "white" : "dark"}
                     >
-                      {item.status === "success" ? "Thành công" : "Chờ xử lý"}
+                      {(item.status || "").toUpperCase() === "SUCCESS" ? "Thành công" : "Chờ xử lý"}
                     </Badge>
                   </td>
                 </tr>
               ))}
               {recentPayments.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="text-center">
+                  <td colSpan="6" className="text-center">
                     Chưa có giao dịch nào.
                   </td>
                 </tr>

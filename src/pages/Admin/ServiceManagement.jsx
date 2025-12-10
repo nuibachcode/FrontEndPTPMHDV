@@ -37,7 +37,7 @@ const ServiceManagement = () => {
   const fetchServices = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get("http://localhost:8081/api/services");
+      const res = await axios.get("http://localhost:8080/api/services");
       if (res.data.EC === 0) {
         setServices(res.data.DT);
       }
@@ -50,7 +50,7 @@ const ServiceManagement = () => {
   // 2. Lấy danh sách Chuyên khoa
   const fetchSpecialties = async () => {
     try {
-      const res = await axios.get("http://localhost:8081/api/specialties");
+      const res = await axios.get("http://localhost:8080/api/specialties");
       if (res.data.EC === 0) {
         setSpecialties(res.data.DT);
       }
@@ -114,7 +114,7 @@ const ServiceManagement = () => {
       if (currentService.id) {
         // UPDATE
         res = await axios.put(
-          `http://localhost:8081/api/services/${currentService.id}`,
+          `http://localhost:8080/api/services/${currentService.id}`,
           payload,
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -122,7 +122,7 @@ const ServiceManagement = () => {
         );
       } else {
         // CREATE
-        res = await axios.post("http://localhost:8081/api/services", payload, {
+        res = await axios.post("http://localhost:8080/api/services", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
@@ -148,7 +148,7 @@ const ServiceManagement = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.delete(
-        `http://localhost:8081/api/services/${id}`,
+        `http://localhost:8080/api/services/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

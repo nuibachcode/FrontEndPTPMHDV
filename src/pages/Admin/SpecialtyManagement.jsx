@@ -28,7 +28,7 @@ const SpecialtyManagement = () => {
   const fetchSpecialties = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get("http://localhost:8081/api/specialties");
+      const res = await axios.get("http://localhost:8080/api/specialties");
       if (res.data.EC === 0) {
         // Map dữ liệu: nameSpecialty -> name
         const mappedData = res.data.DT.map((item) => ({
@@ -61,21 +61,23 @@ const SpecialtyManagement = () => {
     try {
       let res;
       const payload = {
-        name: currentSpecialty.name,
+        nameSpecialty: currentSpecialty.name,
         description: currentSpecialty.description,
       };
+
+      console.log(payload);
 
       if (currentSpecialty.id) {
         // UPDATE
         res = await axios.put(
-          `http://localhost:8081/api/specialties/${currentSpecialty.id}`,
+          `http://localhost:8080/api/specialties/${currentSpecialty.id}`,
           payload,
           { headers: { Authorization: `Bearer ${token}` } }
         );
       } else {
         // CREATE
         res = await axios.post(
-          "http://localhost:8081/api/specialties",
+          "http://localhost:8080/api/specialties",
           payload,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -100,7 +102,7 @@ const SpecialtyManagement = () => {
       try {
         const token = localStorage.getItem("token");
         const res = await axios.delete(
-          `http://localhost:8081/api/specialties/${id}`,
+          `http://localhost:8080/api/specialties/${id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 

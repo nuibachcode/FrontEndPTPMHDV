@@ -55,14 +55,14 @@ export const UserRoutes = [
     path: "/patient/profile",
     element: PatientProfile,
     layout: DefaultLayout,
-    isPrivate: true,
+    isPrivate: false,
     roles: [3],
   },
   {
     path: "/patient/history",
     element: BookingHistory,
     layout: DefaultLayout,
-    isPrivate: true,
+    isPrivate: false,
     roles: [3],
   },
   {
