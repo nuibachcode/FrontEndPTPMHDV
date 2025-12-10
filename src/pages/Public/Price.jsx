@@ -13,7 +13,7 @@ export default function PricePage() {
   const fetchServices = async () => {
     try {
       // Thay đổi cổng 8081
-      let res = await axios.get("http://localhost:8081/api/services");
+      let res = await axios.get("http://localhost:8080/api/services");
       if (res && res.data && res.data.EC === 0) {
         setServices(res.data.DT);
       }

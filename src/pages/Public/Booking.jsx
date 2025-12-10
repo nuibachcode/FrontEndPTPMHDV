@@ -52,15 +52,15 @@ const Booking = () => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     const token = localStorage.getItem("token");
 
-    if (!storedUser || !token) {
-      const isconfirm = window.confirm("Bạn cần đăng nhập để đặt lịch!");
-      if (isconfirm) {
-        navigate("/account/login");
-      } else {
-        navigate("/");
-      }
-      return;
-    }
+    // if (!storedUser || !token) {
+    //   const isconfirm = window.confirm("Bạn cần đăng nhập để đặt lịch!");
+    //   if (isconfirm) {
+    //     navigate("/account/login");
+    //   } else {
+    //     navigate("/");
+    //   }
+    //   return;
+    // }
     setUser(storedUser);
     fetchInitialData();
   }, []);
