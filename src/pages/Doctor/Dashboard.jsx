@@ -28,17 +28,18 @@ const DoctorDashboard = () => {
 
   const fetchBookings = async (doctorId, date) => {
     try {
-      // Format ngày chuẩn YYYY-MM-DD để gửi lên API
       const formattedDate = moment(date).format("YYYY-MM-DD");
-
+      
+      // SỬA: Dùng port 8080 và đường dẫn chuẩn /api/bookings/...
       const res = await axios.get(
-        `http://localhost:8081/api/doctor/bookings?doctorId=${doctorId}&date=${formattedDate}`
+        `http://localhost:8080/api/bookings/doctor-schedule?doctorId=${doctorId}&date=${formattedDate}`
       );
 
-      if (res && res.data && res.data.errCode === 0) {
-        setBookings(res.data.data);
+      // SỬA: Backend trả về chuẩn ApiResponse (có EC, DT)
+      if (res && res.data && res.data.EC === 0) {
+        setBookings(res.data.DT); // Dữ liệu nằm trong DT
       } else {
-        setBookings([]); // Xóa dữ liệu cũ nếu API không trả về gì
+        setBookings([]);
       }
     } catch (error) {
       console.log("Lỗi lấy lịch:", error);
